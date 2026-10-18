@@ -113,11 +113,10 @@ class ParquetStore:
             return pd.DataFrame()
         return pq.read_table(target_path).to_pandas()
 
-    def query(self, sql_query: str) -> pd.DataFrame:
+        def query(self, sql_query: str) -> pd.DataFrame:
         """Execute in-memory DuckDB analytical queries across all active Parquet files."""
-        # Register views pointing directly to local Parquet files
         for f in self.processed_dir.glob("*.parquet"):
-            self.duck_conn.execute(f"CREATE OR REPLACE VIEW {f.stem} AS SELECT * FROM read_parquet('{f.as_posix()}')
+            self.duck_conn.execute(f"CREATE OR REPLACE VIEW {f.stem} AS SELECT * FROM read_parquet('{f.as_posix()}');")
         for f in self.graph_dir.glob("*.parquet"):
-            self.duck_conn.execute(f"CREATE OR REPLACE VIEW {f.stem} AS SELECT * FROM read_parquet('{f.as_posix()}')
+            self.duck_conn.execute(f"CREATE OR REPLACE VIEW {f.stem} AS SELECT * FROM read_parquet('{f.as_posix()}');")
         return self.duck_conn.execute(sql_query).df()
