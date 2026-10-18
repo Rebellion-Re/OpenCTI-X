@@ -4,14 +4,12 @@ Maps heterogeneous intelligence feeds and text strings to canonical entities.
 """
 
 import json
+import re
 from pathlib import Path
-from typing import Dict, List, Any, Optional, Set
+from typing import Dict, List, Any, Tuple
 import yaml
 
 from config.settings import CONFIG_DIR
-from config.logging_config import setup_logger
-
-logger = setup_logger("NormalizationPipeline")
 
 
 class NormalizationPipeline:
@@ -20,175 +18,121 @@ class NormalizationPipeline:
         self.sectors_path = CONFIG_DIR / "sectors.yaml"
         self.geo_path = CONFIG_DIR / "country_regions.json"
 
-        # Lookup caches
-        self.actor_alias_map: Dict[str, str] = {}
-        self.malware_alias_map: Dict[str, str] = {}
-        self.tool_alias_map: Dict[str, str] = {}
-        self.sector_definitions: List[Dict[str, Any]] = []
-        self.geo_definitions: Dict[str, Dict[str, Any]] = {}
-        self.country_name_to_code: Dict[str, str] = {}
+        self.actor_map: Dict[str, str] = {}
+        self.malware_map: Dict[str, str] = {}
+        self.tool_map: Dict[str, str] = {}
+        self.sectors: List[Dict[str, Any]] = []
+        self.geo_data: Dict[str, Dict[str, Any]] = {}
+        self._load_catalogs()
 
-        self.load_reference_catalogs()
-
-    def load_reference_catalogs(self) -> None:
-        """Loads and compiles alias tables and geographic catalogs into memory."""
-        # Load Actor, Malware, and Tool Aliases
+    def _load_catalogs(self) -> None:
+        """Loads canonical alias dictionaries, sectors, and geographic mappings."""
         if self.alias_path.exists():
-            try:
-                with open(self.alias_path, "r", encoding="utf-8") as f:
-                    data = json.load(f)
+            with open(self.alias_path, "r", encoding="utf-8") as f:
+                d = json.load(f)
 
-                # Threat Actors / Threat Groups
-                for canonical, aliases in data.get("actors", {}).items():
-                    self.actor_alias_map[canonical.lower()] = canonical
-                    for a in aliases:
-                        self.actor_alias_map[a.lower()] = canonical
+            for can, aliases in d.get("actors", {}).items():
+                self.actor_map[can.lower()] = can
+                for a in aliases:
+                    self.actor_map[a.lower()] = can
 
-                # Malware Families
-                for canonical, aliases in data.get("malware", {}).items():
-                    self.malware_alias_map[canonical.lower()] = canonical
-                    for a in aliases:
-                        self.malware_alias_map[a.lower()] = canonical
+            for can, aliases in d.get("malware", {}).items():
+                self.malware_map[can.lower()] = can
+                for a in aliases:
+                    self.malware_map[a.lower()] = can
 
-                # Tools (Commodity / Penetration Testing Utilities)
-                for canonical, aliases in data.get("tools", {
-                    "Mimikatz": ["mimi", "sekurlsa"],
-                    "Cobalt Strike": ["beacon", "cs beacon"],
-                    "Chisel": ["chisel-tunnel"],
-                    "BloodHound": ["SharpHound"],
-                    "Impacket": ["wmiexec", "psexec.py", "secretsdump"],
-                    "Sqlmap": ["sqlmap-dev"],
-                    "PsExec": ["psexec.exe", "sysinternals psexec"]
-                }).items():
-                    self.tool_alias_map[canonical.lower()] = canonical
-                    for a in aliases:
-                        self.tool_alias_map[a.lower()] = canonical
+            for can, aliases in d.get("tools", {}).items():
+                self.tool_map[can.lower()] = can
+                for a in aliases:
+                    self.tool_map[a.lower()] = can
 
-            except Exception as e:
-                logger.error(f"Failed to load alias dictionary: {e}")
-
-        # Load Sector Taxonomies
         if self.sectors_path.exists():
-            try:
-                with open(self.sectors_path, "r", encoding="utf-8") as f:
-                    sec_data = yaml.safe_load(f)
-                    self.sector_definitions = sec_data.get("sectors", [])
-            except Exception as e:
-                logger.error(f"Failed to load sectors: {e}")
+            with open(self.sectors_path, "r", encoding="utf-8") as f:
+                self.sectors = yaml.safe_load(f).get("sectors", [])
 
-        # Load Geographic Taxonomies
         if self.geo_path.exists():
-            try:
-                with open(self.geo_path, "r", encoding="utf-8") as f:
-                    self.geo_definitions = json.load(f)
-                    for code, info in self.geo_definitions.items():
-                        self.country_name_to_code[info["name"].lower()] = code
-                        # Add subregion/region aliases
-                        self.country_name_to_code[code.lower()] = code
-            except Exception as e:
-                logger.error(f"Failed to load geo database: {e}")
+            with open(self.geo_path, "r", encoding="utf-8") as f:
+                self.geo_data = json.load(f)
 
     def resolve_threat_actors(self, text: str) -> List[str]:
-        """Identifies threat actors/groups from text and returns canonical names."""
-        text_lower = text.lower()
+        """Resolves threat actor mentions to canonical actor names."""
+        t_low = text.lower()
         matched = set()
-
-        # Check sorted by length descending to prioritize longer phrases
-        sorted_keys = sorted(self.actor_alias_map.keys(), key=len, reverse=True)
-        for key in sorted_keys:
-            # Word boundary search
-            pattern = r'\b' + re.escape(key) + r'\b'
-            if re.search(pattern, text_lower):
-                canonical = self.actor_alias_map[key]
-                matched.add(canonical)
-
+        for k in sorted(self.actor_map.keys(), key=len, reverse=True):
+            if re.search(r"\b" + re.escape(k) + r"\b", t_low):
+                matched.add(self.actor_map[k])
         return sorted(list(matched))
 
     def resolve_malware(self, text: str) -> List[str]:
-        """Identifies malware strains from text and returns canonical names."""
-        text_lower = text.lower()
+        """Resolves malware mentions to canonical malware families."""
+        t_low = text.lower()
         matched = set()
-
-        sorted_keys = sorted(self.malware_alias_map.keys(), key=len, reverse=True)
-        for key in sorted_keys:
-            pattern = r'\b' + re.escape(key) + r'\b'
-            if re.search(pattern, text_lower):
-                canonical = self.malware_alias_map[key]
-                matched.add(canonical)
-
+        for k in sorted(self.malware_map.keys(), key=len, reverse=True):
+            if re.search(r"\b" + re.escape(k) + r"\b", t_low):
+                matched.add(self.malware_map[k])
         return sorted(list(matched))
 
     def resolve_tools(self, text: str) -> List[str]:
-        """Identifies dual-use/offensive tools from text."""
-        text_lower = text.lower()
+        """Resolves dual-use / penetration testing utility mentions."""
+        t_low = text.lower()
         matched = set()
-
-        for key, canonical in self.tool_alias_map.items():
-            pattern = r'\b' + re.escape(key) + r'\b'
-            if re.search(pattern, text_lower):
-                matched.add(canonical)
-
+        for k in sorted(self.tool_map.keys(), key=len, reverse=True):
+            if re.search(r"\b" + re.escape(k) + r"\b", t_low):
+                matched.add(self.tool_map[k])
         return sorted(list(matched))
 
     def resolve_campaigns(self, text: str) -> List[str]:
-        """Extracts designated campaign monikers (Operation X, Campaign Y)."""
+        """Extracts designated intrusion campaign titles."""
         campaign_patterns = [
-            re.compile(r'\bOperation\s+[A-Z][a-zA-Z0-9_\-\s]{2,20}\b'),
-            re.compile(r'\bCampaign\s+[A-Z][a-zA-Z0-9_\-\s]{2,20}\b'),
-            re.compile(r'\b[A-Z][a-zA-Z0-9_]+\s+Campaign\b')
+            re.compile(r"\bOperation\s+[A-Z][a-zA-Z0-9_\-\s]{2,20}\b"),
+            re.compile(r"\bCampaign\s+[A-Z][a-zA-Z0-9_\-\s]{2,20}\b"),
+            re.compile(r"\b[A-Z][a-zA-Z0-9_]+\s+Campaign\b"),
         ]
         found = set()
         for pat in campaign_patterns:
             for match in pat.finditer(text):
                 c = match.group(0).strip()
-                # Exclude generic false positives
-                if len(c) > 10 and not any(neg in c.lower() for neg in ["operation system", "operation code", "opera
+                if len(c) > 10 and not any(
+                    neg in c.lower()
+                    for neg in ["operation system", "operation code", "operation type"]
+                ):
                     found.add(c)
         return sorted(list(found))
 
     def resolve_sectors(self, text: str) -> List[str]:
-        """Maps content to CISA/NAICS critical infrastructure sectors."""
-        text_lower = text.lower()
-        matched_sectors = set()
-
-        for sector in self.sector_definitions:
-            s_name = sector["name"]
-            # Check sector name directly
-            if re.search(r'\b' + re.escape(s_name.lower()) + r'\b', text_lower):
-                matched_sectors.add(s_name)
-                continue
-            # Check sector keywords
-            for kw in sector.get("keywords", []):
-                if re.search(r'\b' + re.escape(kw.lower()) + r'\b', text_lower):
-                    matched_sectors.add(s_name)
-                    break
-
-        return sorted(list(matched_sectors))
+        """Identifies impacted critical infrastructure sectors."""
+        t_low = text.lower()
+        matched = set()
+        for s in self.sectors:
+            if re.search(r"\b" + re.escape(s["name"].lower()) + r"\b", t_low):
+                matched.add(s["name"])
+            for kw in s.get("keywords", []):
+                if re.search(r"\b" + re.escape(kw.lower()) + r"\b", t_low):
+                    matched.add(s["name"])
+        return sorted(list(matched))
 
     def resolve_geopolitics(self, text: str) -> Tuple[List[str], List[str]]:
-        """
-        Extracts impacted countries (ISO codes) and geographic regions.
-        Returns: (country_codes, regions)
-        """
-        text_lower = text.lower()
-        matched_countries = set()
-        matched_regions = set()
-        for code, info in self.geo_definitions.items():
-            name = info["name"].lower()
-            region = info.get("region")
-            subregion = info.get("subregion")
+        """Identifies impacted ISO country codes and continental regions."""
+        t_low = text.lower()
+        countries, regions = set(), set()
 
-            # Match on country name with word boundary
-            if re.search(r'\b' + re.escape(name) + r'\b', text_lower):
-                matched_countries.add(code)
-                if region:
-                    matched_regions.add(region)
-                if subregion:
-                    matched_regions.add(subregion)
+        for code, info in self.geo_data.items():
+            if re.search(r"\b" + re.escape(info["name"].lower()) + r"\b", t_low):
+                countries.add(code)
+                if "region" in info:
+                    regions.add(info["region"])
 
-        # Explicit region matching
-        for reg in ["Americas", "Europe", "Asia", "Middle East", "Africa", "Oceania", "Latin America", "Indo-Pacific
-            if re.search(r'\b' + re.escape(reg.lower()) + r'\b', text_lower):
-                matched_regions.add(reg)
+        for reg in [
+            "Americas",
+            "Europe",
+            "Asia",
+            "Middle East",
+            "Africa",
+            "Oceania",
+            "Latin America",
+            "Indo-Pacific",
+        ]:
+            if re.search(r"\b" + re.escape(reg.lower()) + r"\b", t_low):
+                regions.add(reg)
 
-        return sorted(list(matched_countries)), sorted(list(matched_regions))
+        return sorted(list(countries)), sorted(list(regions))
