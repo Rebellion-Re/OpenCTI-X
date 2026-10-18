@@ -39,3 +39,7 @@ THEME_CONFIG: Dict[str, str] = {
 
 APP_TITLE: str = "ThreatFusion CTI"
 APP_SUBTITLE: str = "Enterprise Cyber Threat Intelligence Platform"
+
+# In config/settings.py
+REPORTS_DIR = DATA_DIR / "reports" if "DATA_DIR" in locals() else BASE_DIR / "data" / "reports"
+REPORTS_DIR.mkdir(parents=True, exist_ok=True)
