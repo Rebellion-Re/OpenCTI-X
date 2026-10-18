@@ -3,6 +3,14 @@ ThreatFusion CTI - Primary Executive Console & Dashboard
 Open-architecture Cyber Threat Intelligence Lakehouse & Matrix Visualizer.
 """
 
+import sys
+from pathlib import Path
+
+# Add repository root directory to Python path
+ROOT_DIR = Path(__file__).resolve().parent.parent
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
+
 import streamlit as st
 import pandas as pd
 from config.settings import CSS_DIR, APP_TITLE, APP_SUBTITLE
@@ -35,11 +43,16 @@ if css_file.exists():
         pass
 
 # Initialize lakehouse directory and blank tables to prevent missing view exceptions
-store = ParquetStore()
-try:
-    store.initialize_lake()
-except Exception:
-    pass
+@st.cache_resource
+def get_store() -> ParquetStore:
+    s = ParquetStore()
+    try:
+        s.initialize_lake()
+    except Exception:
+        pass
+    return s
+
+store = get_store()
 
 # Header & Cloud Storage Connectivity Badge
 head_col, status_col = st.columns([3, 1])
