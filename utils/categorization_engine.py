@@ -35,7 +35,7 @@ class CategorizationEngine:
             "tactic": "Execution",
             "tactic_id": "TA0002",
             "patterns": [
-                r"\bpowershell\.exe\b", r"\bpwsh\b", r"\bdownloadstring\b",
+                r"\bpowershell(\.exe)?\b", r"\bpwsh\b", r"\bdownloadstring\b",
                 r"\binvoke-expression\b", r"\b-enc\s+[a-zA-Z0-9+/=]{10,}\b", r"\biex\b"
             ]
         },
@@ -75,7 +75,7 @@ class CategorizationEngine:
             "tactic": "Persistence",
             "tactic_id": "TA0003",
             "patterns": [
-                r"\bschtasks\.exe\b", r"\b/create\s+/tn\b", r"\bscheduled\s+task\b"
+                r"\bschtasks(\.exe)?\b", r"\b/create\s+/tn\b", r"\bscheduled\s+tasks?\b"
             ]
         },
         {
