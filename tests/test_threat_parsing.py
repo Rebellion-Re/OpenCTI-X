@@ -15,7 +15,7 @@ the Financial Services sector and Defense Industrial Base across Ukraine and the
 The threat group exploited CVE-2023-38831 in WinRAR and used PowerShell to execute encoded payloads.
 Attackers deployed Mimikatz to dump credentials from lsass.exe and established persistence 
 via scheduled tasks. Cobalt Strike Beacon was observed connecting to command and control 
-infrastructure at 198.51.100.25:8080 and hxxps://malicious-telemetry[.]com/api/v1.
+infrastructure at 185.220.101.5:8080 and hxxps://malicious-telemetry[.]com/api/v1.
 The sample SHA256 was 2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae.
 """
 
@@ -25,7 +25,7 @@ def test_parsers_extraction():
     
     # Test IP Extraction (excludes private/bogons)
     ips = parsers.extract_ips(SAMPLE_INTEL_TEXT)
-    assert any(ip["normalized"] == "198.51.100.25" for ip in ips)
+    assert any(ip["normalized"] == "185.220.101.5" for ip in ips)
 
     # Test URL Defanging / Extraction
     urls = parsers.extract_urls(SAMPLE_INTEL_TEXT)
