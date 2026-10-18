@@ -1,18 +1,98 @@
 {
   "actors": {
-    "APT28": ["Fancy Bear", "Strontium", "Sofacy", "Sednit", "Pawn Storm", "T-APT-08", "Forest Blizzard"],
-    "APT29": ["Cozy Bear", "Midnight Blizzard", "Nobelium", "The Dukes", "YTTRIUM"],
-    "Lazarus Group": ["HIDDEN COBRA", "Zinc", "Guardians of Peace", "Labyrinth Chollima"],
-    "APT41": ["Double Dragon", "Barium", "Winnti Group", "Wicked Panda", "Brass Typhoon"],
-    "Sandworm": ["Voodoo Bear", "TeleBots", "BlackEnergy", "Ironside", "Seashell Blizzard"],
-    "LockBit": ["LockBit 2.0", "LockBit 3.0", "LockBit Black", "LockBit Green"],
-    "BlackCat": ["ALPHV", "Noberus"]
+    "APT28": [
+      "Fancy Bear",
+      "Strontium",
+      "Sofacy",
+      "Sednit",
+      "Pawn Storm",
+      "T-APT-08",
+      "Forest Blizzard"
+    ],
+    "APT29": [
+      "Cozy Bear",
+      "Midnight Blizzard",
+      "Nobelium",
+      "The Dukes",
+      "YTTRIUM"
+    ],
+    "Lazarus Group": [
+      "HIDDEN COBRA",
+      "Zinc",
+      "Guardians of Peace",
+      "Labyrinth Chollima"
+    ],
+    "APT41": [
+      "Double Dragon",
+      "Barium",
+      "Winnti Group",
+      "Wicked Panda",
+      "Brass Typhoon"
+    ],
+    "Sandworm": [
+      "Voodoo Bear",
+      "TeleBots",
+      "BlackEnergy",
+      "Ironside",
+      "Seashell Blizzard"
+    ],
+    "LockBit": [
+      "LockBit 2.0",
+      "LockBit 3.0",
+      "LockBit Black",
+      "LockBit Green"
+    ],
+    "BlackCat": [
+      "ALPHV",
+      "Noberus"
+    ]
   },
   "malware": {
-    "Cobalt Strike": ["CobaltStrike", "Beacon"],
-    "Mimikatz": ["mimi", "gentilkiwi-mimikatz"],
-    "Qakbot": ["QBot", "QuakBot", "Pinkslipbot"],
-    "Emotet": ["Geodo", "Heodo"],
-    "BlackCat": ["ALPHV", "Noberus"]
+    "Cobalt Strike": [
+      "CobaltStrike",
+      "Beacon"
+    ],
+    "Qakbot": [
+      "QBot",
+      "QuakBot",
+      "Pinkslipbot"
+    ],
+    "Emotet": [
+      "Geodo",
+      "Heodo"
+    ],
+    "BlackCat": [
+      "ALPHV",
+      "Noberus"
+    ]
+  },
+  "tools": {
+    "Mimikatz": [
+      "mimi",
+      "gentilkiwi-mimikatz",
+      "sekurlsa"
+    ],
+    "Cobalt Strike": [
+      "beacon",
+      "cs beacon"
+    ],
+    "Chisel": [
+      "chisel-tunnel"
+    ],
+    "BloodHound": [
+      "SharpHound"
+    ],
+    "Impacket": [
+      "wmiexec",
+      "psexec.py",
+      "secretsdump"
+    ],
+    "Sqlmap": [
+      "sqlmap-dev"
+    ],
+    "PsExec": [
+      "psexec.exe",
+      "sysinternals psexec"
+    ]
   }
 }
