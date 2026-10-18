@@ -8,41 +8,36 @@ from utils.normalization_pipeline import NormalizationPipeline
 from utils.categorization_engine import CategorizationEngine
 from utils.threat_pipeline import ThreatPipeline
 
-
-SAMPLE_INTEL_TEXT = """
-In late 2024, Fancy Bear (also known as APT28) launched Operation StealPast targeting 
-the Financial Services sector and Defense Industrial Base across Ukraine and the United States.
-The threat group exploited CVE-2023-38831 in WinRAR and used PowerShell to execute encoded payloads.
-Attackers deployed Mimikatz to dump credentials from lsass.exe and established persistence 
-via scheduled tasks. Cobalt Strike Beacon was observed connecting to command and control 
-infrastructure at 185.220.101.5:8080 and hxxps://malicious-telemetry[.]com/api/v1.
-The sample SHA256 was 2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae.
-"""
+SAMPLE_INTEL_TEXT = (
+    "In late 2024, Fancy Bear (also known as APT28) launched Operation StealPast targeting "
+    "the Financial Services sector and Defense Industrial Base across Ukraine and the United States. "
+    "The threat group exploited CVE-2023-38831 in WinRAR and used PowerShell to execute encoded payloads. "
+    "Attackers deployed Mimikatz to dump credentials from lsass.exe and established persistence "
+    "via scheduled tasks. Cobalt Strike Beacon was observed connecting to command and control "
+    "infrastructure at 185.220.101.5:8080 and hxxps://malicious-telemetry[.]com/api/v1. "
+    "The sample SHA256 was 2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae."
+)
 
 
 def test_parsers_extraction():
     parsers = ThreatParsers()
-    
-    # Test IP Extraction (excludes private/bogons)
+
     ips = parsers.extract_ips(SAMPLE_INTEL_TEXT)
     assert any(ip["normalized"] == "185.220.101.5" for ip in ips)
 
-    # Test URL Defanging / Extraction
     urls = parsers.extract_urls(SAMPLE_INTEL_TEXT)
     assert any("malicious-telemetry.com" in u["normalized"] for u in urls)
 
-    # Test Hash Extraction
     hashes = parsers.extract_hashes(SAMPLE_INTEL_TEXT)
     assert any(h["normalized"] == "2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae" for h in hashes)
 
-    # Test CVE Extraction
     cves = parsers.extract_cves(SAMPLE_INTEL_TEXT)
     assert "CVE-2023-38831" in cves
 
 
 def test_normalization_and_aliases():
     normalizer = NormalizationPipeline()
-    
+
     actors = normalizer.resolve_threat_actors(SAMPLE_INTEL_TEXT)
     assert "APT28" in actors
 
