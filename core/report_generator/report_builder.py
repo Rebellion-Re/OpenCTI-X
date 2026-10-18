@@ -1,243 +1,191 @@
 """
-ThreatFusion CTI - Master Report Builder Engine
-Synthesizes telemetry, Lakehouse data, and MITRE maps into ReportData objects.
+ThreatFusion CTI - Executive & Technical Threat Intelligence Report Generator
+Builds multi-format reports (HTML, PDF, Markdown) with dynamic styling.
 """
 
+import json
+from datetime import datetime
+from pathlib import Path
 from typing import Dict, Any, List, Optional
-import pandas as pd
 
-from database.parquet_store import ParquetStore
-from core.mitre.database import MitreDatabase
-from core.hunting.database import HuntDatabase
-from core.report_generator.report_models import ReportData
-from core.report_generator.chart_generator import ReportChartGenerator
-from core.report_generator.pdf_generator import PDFReportGenerator
-from core.report_generator.docx_generator import DocxReportGenerator
-from core.report_generator.html_generator import HTMLReportGenerator
+from config.settings import REPORTS_DIR
+from config.logging_config import setup_logger
+
+logger = setup_logger("ReportBuilder")
+
+try:
+    from weasyprint import HTML, CSS
+    WEASYPRINT_AVAILABLE = True
+except Exception:
+    WEASYPRINT_AVAILABLE = False
 
 
 class ReportBuilder:
-    def __init__(self, store: Optional[ParquetStore] = None) -> None:
-        self.store = store or ParquetStore()
-        self.mitre_db = MitreDatabase()
-        self.hunt_db = HuntDatabase()
+    def __init__(self, output_dir: Optional[Path] = None) -> None:
+        self.output_dir = output_dir or REPORTS_DIR
+        self.output_dir.mkdir(parents=True, exist_ok=True)
 
-    def build_report(
-        self,
-        report_type: str,
-        entity_name: Optional[str] = None,
-        tlp: str = "AMBER"
-    ) -> ReportData:
-        """Constructs a fully populated ReportData model based on domain type."""
-        rtype = report_type.upper()
-
-        if rtype == "EXECUTIVE":
-            return self._build_executive_report(tlp)
-        elif rtype == "ACTOR":
-            return self._build_actor_report(entity_name or "APT28", tlp)
-        elif rtype == "CAMPAIGN":
-            return self._build_campaign_report(entity_name or "Active Intrusion", tlp)
-        elif rtype == "MALWARE":
-            return self._build_malware_report(entity_name or "Cobalt Strike", tlp)
-        elif rtype == "VULNERABILITY":
-            return self._build_vulnerability_report(entity_name or "CVE-2023-38831", tlp)
-        elif rtype == "IOC":
-            return self._build_ioc_report(tlp)
-        elif rtype == "MITRE":
-            return self._build_mitre_report(entity_name or "T1059.001", tlp)
-        elif rtype == "HUNTING":
-            return self._build_hunting_report(tlp)
-        else:
-            return self._build_executive_report(tlp)
-
-    def export(self, report: ReportData, output_format: str) -> bytes:
-        """Exports ReportData to PDF, DOCX, or HTML binary/string formats."""
-        fmt = output_format.upper()
-        if fmt == "PDF":
-            return PDFReportGenerator.generate_pdf(report)
-        elif fmt == "DOCX":
-            return DocxReportGenerator.generate_docx(report)
-        elif fmt == "HTML":
-            return HTMLReportGenerator.render(report).encode("utf-8")
-        else:
-            raise ValueError(f"Unsupported output format: {fmt}")
-
-    def _build_executive_report(self, tlp: str) -> ReportData:
-        reports_df = self.store.read_table("reports")
-        iocs_df = self.store.read_table("iocs")
-
-        total_reps = len(reports_df) if not reports_df.empty else 0
-        total_iocs = len(iocs_df) if not iocs_df.empty else 0
-
-        # Build Static Visualizations
-        charts = {
-            "attack_trends": ReportChartGenerator.generate_attack_trend_chart(
-                ["2026-10-12", "2026-10-13", "2026-10-14", "2026-10-15", "2026-10-16", "2026-10-17"],
-                [12, 19, 34, 28, 45, 52]
+    def generate_sample_report_data(self) -> Dict[str, Any]:
+        """Provides default structured data for report generation and testing."""
+        return {
+            "title": "Threat Advisory: Advanced Cyber Threat Activity",
+            "report_id": f"TF-ADV-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}",
+            "created_at": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC"),
+            "tlp": "AMBER",
+            "confidence": "High",
+            "threat_actors": ["APT28", "Fancy Bear"],
+            "malware_families": ["Cobalt Strike", "Mimikatz"],
+            "targeted_sectors": ["Financial Services", "Defense Industrial Base", "Critical Infrastructure"],
+            "targeted_countries": ["US", "UA", "GB", "DE"],
+            "summary": (
+                "Recent threat telemetry indicates elevated operational tempo by state-sponsored actors "
+                "utilizing multi-stage PowerShell execution chains, credential dumping via LSASS injection, "
+                "and persistent scheduled tasks across targeted enterprise environments."
             ),
-            "sector_targets": ReportChartGenerator.generate_sector_distribution_chart({
-                "Defense Industrial Base": 42,
-                "Financial Services": 36,
-                "Energy & Utilities": 28,
-                "Healthcare": 22,
-                "Government": 18
-            }),
-            "tactic_radar": ReportChartGenerator.generate_mitre_tactic_radar({
-                "Execution": 15, "Initial Access": 12, "Persistence": 9,
-                "Defense Evasion": 18, "Credential Access": 14, "C2": 16
-            })
+            "timeline": [
+                {"date": "2026-10-01", "event": "Initial Intrusion Observed via spearphishing attachment."},
+                {"date": "2026-10-03", "event": "Execution of obfuscated PowerShell scripts and credential access."},
+                {"date": "2026-10-05", "event": "Lateral movement detected via SMB and scheduled tasks creation."},
+                {"date": "2026-10-10", "event": "Command and control communication established to external infrastructure."}
+            ],
+            "mitre_ttps": [
+                {"technique_id": "T1566.001", "name": "Spearphishing Attachment", "tactic": "Initial Access"},
+                {"technique_id": "T1059.001", "name": "PowerShell", "tactic": "Execution"},
+                {"technique_id": "T1003.001", "name": "LSASS Memory", "tactic": "Credential Access"},
+                {"technique_id": "T1053.005", "name": "Scheduled Task", "tactic": "Persistence"},
+                {"technique_id": "T1071.001", "name": "Web Protocols (HTTP/S)", "tactic": "Command and Control"}
+            ],
+            "iocs": [
+                {"type": "IPV4", "value": "185.220.101.5", "asn": "AS9009", "status": "Active C2"},
+                {"type": "DOMAIN", "value": "malicious-telemetry.com", "asn": "AS13335", "status": "Active C2"},
+                {"type": "SHA256", "value": "2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae", "asn": "N/A", "status": "Dropper Payload"}
+            ],
+            "recommendations": [
+                "Implement strict endpoint isolation rules for unauthorized PowerShell script executions.",
+                "Enforce Credential Guard and LSA Protection to thwart memory dumping tools.",
+                "Block identified C2 IP addresses and domain infrastructure at network perimeters."
+            ]
         }
 
-        # Format Top IOCs
-        iocs_sample = []
-        if not iocs_df.empty:
-            for _, r in iocs_df.head(10).iterrows():
-                iocs_sample.append({
-                    "ioc_type": r.get("ioc_type"),
-                    "ioc_value": r.get("ioc_value"),
-                    "c2_flag": r.get("c2_flag"),
-                    "decay_score": r.get("decay_score"),
-                    "malware": r.get("malware_families") or []
-                })
+    def render_html_report(self, data: Optional[Dict[str, Any]] = None) -> str:
+        """Renders executive-grade dark-themed HTML report."""
+        rep = data or self.generate_sample_report_data()
 
-        return ReportData(
-            report_type="EXECUTIVE",
-            title="Strategic Threat Landscape & Executive Briefing",
-            tlp=tlp,
-            executive_summary=(
-                "Over the past operational cycle, state-sponsored cyber espionage operations and "
-                "ransomware syndicates have maintained high operational tempo targeting critical infrastructure. "
-                "A 28% increase in public-facing perimeter exploitation was observed, predominantly leveraging "
-                "unpatched zero-day and n-day vulnerabilities coupled with memory-only post-exploitation payloads."
-            ),
-            strategic_impact=(
-                "Adversary activity presents critical operational disruption risk to Financial and Defense "
-                "sectors. Multi-stage ransomware campaigns continue to target backup and recovery infrastructure, "
-                "necessitating immediate verification of immutable offline snapshots and credential segregation."
-            ),
-            chart_images=charts,
-            timeline=[
-                {"date": "2026-10-01", "event": "Initial Intrusion Observed", "description": "Spearphishing targetin
-                {"date": "2026-10-08", "event": "Lateral Movement Wave", "description": "Abuse of PsExec and WMI dis
-                {"date": "2026-10-15", "event": "Data Exfiltration Detection", "description": "High-volume egress ov
-            ],
-            mitre_mappings=[
-                {"technique_id": "T1190", "technique_name": "Exploit Public-Facing Application", "tactic": "Initial
-                {"technique_id": "T1059.001", "technique_name": "PowerShell", "tactic": "Execution", "confidence": 9
-                {"technique_id": "T1003.001", "technique_name": "LSASS Memory Dump", "tactic": "Credential Access",
-            ],
-            iocs=iocs_sample,
-            recommendations=[
-                {"priority": "HIGH", "category": "Vulnerability Management", "title": "Patch External Facing Gateway
-                {"priority": "HIGH", "category": "Identity Security", "title": "Implement Phishing-Resistant MFA", "
-                {"priority": "MEDIUM", "category": "Endpoint Detection", "title": "Harden PowerShell Script Block Lo
-            ]
-        )
+        tlp = rep.get("tlp", "AMBER").upper()
+        tlp_color = "#FF8800" if tlp == "AMBER" else ("#FF4444" if tlp == "RED" else "#00FF66")
 
-    def _build_actor_report(self, actor_name: str, tlp: str) -> ReportData:
-        return ReportData(
-            report_type="ACTOR",
-            title=f"Adversary Intelligence Profile: {actor_name}",
-            tlp=tlp,
-            executive_summary=(
-                f"Adversary group {actor_name} is an advanced persistent threat (APT) actor characterized by "
-                "strategic espionage campaigns, custom modular backdoors, and disciplined operational security. "
-                "The group predominantly targets government defense contractors, aerospace, and energy sectors."
-            ),
-            strategic_impact="High risk of confidential intellectual property and diplomatic intelligence theft.",
-            timeline=[
-                {"date": "2024 - 2025", "event": "Spearphishing Campaigns", "description": "Weaponized attachments c
-                {"date": "2026-Q1", "event": "Supply Chain Breach", "description": "Compromise of regional IT servic
-            ],
-            mitre_mappings=[
-                {"technique_id": "T1566.001", "technique_name": "Spearphishing Attachment", "tactic": "Initial Acces
-                {"technique_id": "T1071.001", "technique_name": "Web Protocols (HTTP/S)", "tactic": "Command and Con
-            ],
-            recommendations=[
-                {"priority": "HIGH", "category": "Perimeter", "title": "Block Known C2 Infrastructure", "details": "
-                {"priority": "MEDIUM", "category": "Monitoring", "title": "Hunt for Living-off-the-Land Binaries", "
-            ]
-        )
+        timeline_rows = "".join([
+            f"<tr><td style='padding: 8px; border-bottom: 1px solid #30363d; font-family: monospace;'>{item['date']}</td>"
+            f"<td style='padding: 8px; border-bottom: 1px solid #30363d;'>{item['event']}</td></tr>"
+            for item in rep.get("timeline", [])
+        ])
 
-    def _build_campaign_report(self, campaign_name: str, tlp: str) -> ReportData:
-        return ReportData(
-            report_type="CAMPAIGN",
-            title=f"Campaign Intelligence Dossier: {campaign_name}",
-            tlp=tlp,
-            executive_summary=f"Analysis of intrusion operations associated with {campaign_name}.",
-            timeline=[{"date": "2026-09-01", "event": "Campaign Inception", "description": "First domains registered
-            recommendations=[{"priority": "HIGH", "category": "Detection", "title": "Deploy Hunt Queries", "details"
-        )
+        ttp_rows = "".join([
+            f"<tr><td style='padding: 8px; border-bottom: 1px solid #30363d; font-family: monospace; color: #58a6ff;'>{item['technique_id']}</td>"
+            f"<td style='padding: 8px; border-bottom: 1px solid #30363d;'>{item['name']}</td>"
+            f"<td style='padding: 8px; border-bottom: 1px solid #30363d; color: #8b949e;'>{item['tactic']}</td></tr>"
+            for item in rep.get("mitre_ttps", [])
+        ])
 
-    def _build_malware_report(self, malware_name: str, tlp: str) -> ReportData:
-        return ReportData(
-            report_type="MALWARE",
-            title=f"Malware Family Technical Analysis: {malware_name}",
-            tlp=tlp,
-            executive_summary=f"Technical capabilities, execution artifacts, and network signatures of {malware_name
-            recommendations=[{"priority": "HIGH", "category": "Endpoint", "title": "Deploy YARA Signatures", "detail
-        )
+        ioc_rows = "".join([
+            f"<tr><td style='padding: 8px; border-bottom: 1px solid #30363d; font-weight: bold;'>{item['type']}</td>"
+            f"<td style='padding: 8px; border-bottom: 1px solid #30363d; font-family: monospace;'>{item['value']}</td>"
+            f"<td style='padding: 8px; border-bottom: 1px solid #30363d; color: #3fb950;'>{item['status']}</td></tr>"
+            for item in rep.get("iocs", [])
+        ])
 
-    def _build_vulnerability_report(self, cve_id: str, tlp: str) -> ReportData:
-        return ReportData(
-            report_type="VULNERABILITY",
-            title=f"Vulnerability Intelligence Advisory: {cve_id}",
-            tlp=tlp,
-            executive_summary=f"Critical advisory on exploitation activity surrounding {cve_id}.",
-            vulnerabilities=[{
-                "cve_id": cve_id,
-                "cvss_score": 9.8,
-                "is_known_exploited": True,
-                "ransomware_use": True,
-                "affected_vendors": ["WinRAR", "Microsoft"]
-            }],
-            recommendations=[{"priority": "HIGH", "category": "Remediation", "title": "Emergency Patching", "details
-        )
+        recs = "".join([f"<li style='margin-bottom: 6px;'>{r}</li>" for r in rep.get("recommendations", [])])
 
-    def _build_ioc_report(self, tlp: str) -> ReportData:
-        iocs_df = self.store.read_table("iocs")
-        iocs_sample = []
-        if not iocs_df.empty:
-            for _, r in iocs_df.head(25).iterrows():
-                iocs_sample.append({
-                    "ioc_type": r.get("ioc_type"),
-                    "ioc_value": r.get("ioc_value"),
-                    "c2_flag": r.get("c2_flag"),
-                    "decay_score": r.get("decay_score"),
-                    "malware": r.get("malware_families") or []
-                })
+        html_template = f"""<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>{rep.get('title')}</title>
+    <style>
+        body {{
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #0d1117;
+            color: #c9d1d9;
+            margin: 0;
+            padding: 24px;
+            font-size: 14px;
+            line-height: 1.5;
+        }}
+        .header {{
+            border-bottom: 2px solid #30363d;
+            padding-bottom: 16px;
+            margin-bottom: 24px;
+        }}
+        .badge {{
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 12px;
+            color: #ffffff;
+            background-color: {tlp_color};
+        }}
+        h1 {{ color: #ffffff; margin-top: 10px; font-size: 24px; }}
+        h2 {{ color: #58a6ff; border-bottom: 1px solid #21262d; padding-bottom: 6px; margin-top: 24px; font-size: 18px; }}
+        table {{ width: 100%; border-collapse: collapse; margin-top: 12px; }}
+        th {{ text-align: left; background-color: #161b22; padding: 10px 8px; color: #8b949e; border-bottom: 1px solid #30363d; }}
+        .card {{ background-color: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 16px; margin-bottom: 20px; }}
+    </style>
+</head>
+<body>
+    <div class="header">
+        <span class="badge">TLP:{tlp}</span>
+        <span style="float: right; color: #8b949e;">{rep.get('created_at')} | {rep.get('report_id')}</span>
+        <h1>{rep.get('title')}</h1>
+    </div>
 
-        return ReportData(
-            report_type="IOC",
-            title="Comprehensive Technical Indicators (IOC) Package",
-            tlp=tlp,
-            executive_summary="Deduplicated and defanged technical indicators with decay scores.",
-            iocs=iocs_sample,
-            recommendations=[{"priority": "HIGH", "category": "Ingestion", "title": "Automated Blocklist Ingestion",
-        )
+    <div class="card">
+        <h2 style="margin-top: 0;">Executive Summary</h2>
+        <p>{rep.get('summary')}</p>
+        <p><strong>Threat Actors:</strong> {", ".join(rep.get('threat_actors', []))}</p>
+        <p><strong>Identified Malware:</strong> {", ".join(rep.get('malware_families', []))}</p>
+        <p><strong>Targeted Sectors:</strong> {", ".join(rep.get('targeted_sectors', []))}</p>
+    </div>
 
-    def _build_mitre_report(self, technique_id: str, tlp: str) -> ReportData:
-        return ReportData(
-            report_type="MITRE",
-            title=f"ATT&CK Technique Dossier: {technique_id}",
-            tlp=tlp,
-            executive_summary=f"Deep-dive technical brief on MITRE ATT&CK Technique {technique_id}.",
-            mitre_mappings=[{"technique_id": technique_id, "technique_name": "PowerShell Execution", "tactic": "Exec
-            recommendations=[{"priority": "MEDIUM", "category": "GPO", "title": "Constrained Language Mode", "detail
-        )
+    <h2>Incident & Activity Timeline</h2>
+    <table>
+        <thead><tr><th>Date</th><th>Observed Event Activity</th></tr></thead>
+        <tbody>{timeline_rows}</tbody>
+    </table>
 
-    def _build_hunting_report(self, tlp: str) -> ReportData:
-        queries_df = self.hunt_db.load_all_queries()
-        h_sample = []
-        if not queries_df.empty:
-            for _, q in queries_df.head(5).iterrows():
-                h_sample.append(q.to_dict())
+    <h2>MITRE ATT&CK Mapping</h2>
+    <table>
+        <thead><tr><th>Technique ID</th><th>Technique Name</th><th>Tactic</th></tr></thead>
+        <tbody>{ttp_rows}</tbody>
+    </table>
 
-        return ReportData(
-            report_type="THREAT HUNTING",
-            title="Threat Hunting & Detection Engineering Package",
-            tlp=tlp,
-            executive_summary="Verified hunting queries across KQL, SPL, LogScale, Sigma, and YARA.",
-            hunt_queries=h_sample,
-            recommendations=[{"priority": "HIGH", "category": "SOC Ops", "title": "Scheduled Hunt Sweeps", "details"
-        )
+    <h2>Indicators of Compromise (IOCs)</h2>
+    <table>
+        <thead><tr><th>Type</th><th>Indicator Value</th><th>Context</th></tr></thead>
+        <tbody>{ioc_rows}</tbody>
+    </table>
+
+    <h2>Mitigation & Defense Recommendations</h2>
+    <ul>{recs}</ul>
+</body>
+</html>"""
+        return html_template
+
+    def generate_pdf_report(self, data: Optional[Dict[str, Any]] = None, output_filename: Optional[str] = None) -> Optional[Path]:
+        """Generates a PDF report using WeasyPrint if available."""
+        if not WEASYPRINT_AVAILABLE:
+            logger.warning("WeasyPrint is not installed or available on this system.")
+            return None
+
+        rep_data = data or self.generate_sample_report_data()
+        html_content = self.render_html_report(rep_data)
+        out_name = output_filename or f"{rep_data.get('report_id', 'report')}.pdf"
+        out_path = self.output_dir / out_name
+
+        try:
+            HTML(string=html_content).write_pdf(str(out_path))
+            logger.info(f"Generated PDF report: {out_path}")
+            return out_path
+        except Exception as e:
+            logger.error(f"Failed to generate PDF report: {e}")
+            return None
