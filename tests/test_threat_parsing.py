@@ -33,8 +33,8 @@ def test_parsers_extraction():
 
     # Test Hash Extraction
     hashes = parsers.extract_hashes(SAMPLE_INTEL_TEXT)
-# Broken: missing closing parenthesis
-    assert any(h["normalized"] == "2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae" for h in hashes
+    # Fixed: properly closed parenthesis
+    assert any(h["normalized"] == "2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae" for h in hashes)
                
     # Test CVE Extraction
     cves = parsers.extract_cves(SAMPLE_INTEL_TEXT)
