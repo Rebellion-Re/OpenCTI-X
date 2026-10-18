@@ -6,7 +6,7 @@ Open-architecture Cyber Threat Intelligence Lakehouse & Matrix Visualizer.
 import sys
 from pathlib import Path
 
-# Add repository root directory to Python path
+# Add repository root directory to sys.path so top-level packages (config, database, utils, core) can be resolved
 ROOT_DIR = Path(__file__).resolve().parent.parent
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
@@ -152,10 +152,12 @@ with right_pane:
             layer = heatmap_engine.generate_heatmap_layer()
             tech_df = mitre_db.get_techniques()
             if not tech_df.empty:
-                st.markdown(MitreMatrixVisualizer.render_matrix_html(tech_df, layer), unsafe_allow_html=True)
+                matrix_html = MitreMatrixVisualizer.render_matrix_html(tech_df, layer)
+                # Render via component iframe to prevent Markdown code-block escaping and buffer truncations
+                st.components.v1.html(matrix_html, height=480, scrolling=True)
             else:
                 st.info("MITRE ATT&CK taxonomy synchronizing...")
-        except Exception:
-            st.info("MITRE ATT&CK heatmap synchronizing in the background...")
+        except Exception as e:
+            st.info(f"MITRE ATT&CK heatmap synchronizing ({e})...")
     else:
         st.info("MITRE ATT&CK visualizer loading...")
