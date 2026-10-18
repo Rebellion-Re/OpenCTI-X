@@ -1,7 +1,6 @@
 target-version = "py311"
 line-length = 120
 
-# Directories to exclude from linting
 exclude = [
     ".git",
     ".venv",
@@ -13,15 +12,12 @@ exclude = [
 ]
 
 [lint]
-# Check for standard errors and syntax issues
 select = ["E", "F"]
-
-# Ignore rules that trigger on CTI scripts, long queries, and regexes
 ignore = [
-    "E501",  # Line too long (very common in regex and raw hunting queries)
-    "W605",  # Invalid escape sequence (triggers on raw regex strings)
-    "F841",  # Unused variable (common in scrapers and data parsing loops)
-    "E402",  # Module-level import not at top of file (common in Streamlit)
-    "E722",  # Do not use bare 'except'
-    "F401",  # Unused imports (optional: add if you have unused imports during development)
+    "E501",  # Line too long
+    "W605",  # Invalid escape sequence in regex
+    "F841",  # Unused variable
+    "E402",  # Module-level import not at top of file
+    "E722",  # Bare except
+    "F401",  # Unused imports
 ]
