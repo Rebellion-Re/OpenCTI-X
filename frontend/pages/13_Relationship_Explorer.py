@@ -1,177 +1,155 @@
 """
-ThreatFusion CTI - Interactive Knowledge Graph & Relationship Explorer
+ThreatFusion CTI - Knowledge Graph & Entity Relationship Explorer
+Interactive pivoting, link analysis, and graph visualization across threat actors, IOCs, and MITRE TTPs.
 """
+
+import sys
+from pathlib import Path
+
+# Add project root directory to sys.path
+ROOT_DIR = Path(__file__).resolve().parent.parent.parent
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
 
 import streamlit as st
 import pandas as pd
 from config.settings import CSS_DIR, APP_TITLE
 from database.parquet_store import ParquetStore
-from core.correlation.graph_engine import KnowledgeGraphEngine
-from core.correlation.graph_models import GraphNode
-from frontend.components.network_graph import NetworkGraphVisualizer
+from core.mitre.database import MitreDatabase
 
 st.set_page_config(
     page_title=f"{APP_TITLE} | Relationship Explorer",
-    page_icon="",
+    page_icon="🕸️",
     layout="wide"
 )
 
-# Apply Dark Enterprise Theme
+# Custom dark CSS styling
 css_file = CSS_DIR / "dark_theme.css"
 if css_file.exists():
-    with open(css_file, "r") as f:
-        st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+    try:
+        with open(css_file, "r", encoding="utf-8") as f:
+            st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+    except Exception:
+        pass
 
-st.title(" Threat Knowledge Graph Explorer")
-st.markdown("Investigate multi-hop entity relationships, infrastructure linkages, and dynamic confidence scores.")
+st.title("🕸️ Threat Knowledge Graph & Relationship Explorer")
+st.markdown("Perform multi-hop entity link analysis across threat actors, malware strains, infrastructure, and ATT&CK TTPs.")
 
 store = ParquetStore()
-graph_engine = KnowledgeGraphEngine(store)
+try:
+    store.initialize_lake()
+except Exception:
+    pass
 
-# Top Action Toolbar
-col_refresh, col_depth, col_conf = st.columns([1, 1, 2])
+# Sidebar Filters
+st.sidebar.subheader("Graph Filters")
+selected_relation = st.sidebar.selectbox(
+    "Filter by Relationship Type:",
+    ["All", "uses", "targets", "indicates", "attributed-to", "communicates-with"]
+)
 
-with col_refresh:
-    if st.button(" Recompile Knowledge Graph", use_container_width=True):
-        with st.spinner("Traversing Parquet Lakehouse & Building NetworkX Graph..."):
-            graph_engine.build_graph_from_lake()
-            st.success("Graph Synchronized!")
-
-# Load graph into memory
-G = graph_engine.build_graph_from_lake() if len(graph_engine.graph.nodes) == 0 else graph_engine.graph
-
-with col_depth:
-    depth = st.slider("Traversal Depth (Hops):", min_value=1, max_value=3, value=1)
-
-with col_conf:
-    min_confidence = st.slider("Minimum Confidence Threshold (%):", min_value=0.0, max_value=100.0, value=30.0, step
-
-# Metrics Strip
-m1, m2, m3, m4 = st.columns(4)
-with m1:
-    st.markdown(f"""
-    <div class="soc-card">
-        <div class="soc-metric-title">Total Entities (Nodes)</div>
-        <div class="soc-metric-value">{G.number_of_nodes()}</div>
-    </div>
-    """, unsafe_allow_html=True)
-with m2:
-    st.markdown(f"""
-    <div class="soc-card">
-        <div class="soc-metric-title">Total Links (Edges)</div>
-        <div class="soc-metric-value">{G.number_of_edges()}</div>
-    </div>
-    """, unsafe_allow_html=True)
-with m3:
-    st.markdown(f"""
-    <div class="soc-card">
-        <div class="soc-metric-title">Graph Density</div>
-        <div class="soc-metric-value">{nx.density(G):.4f}</div>
-    </div>
-    """, unsafe_allow_html=True)
-with m4:
-    components = nx.number_weakly_connected_components(G) if G.is_directed() else 0
-    st.markdown(f"""
-    <div class="soc-card">
-        <div class="soc-metric-title">Threat Clusters</div>
-        <div class="soc-metric-value">{components}</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-st.divider()
-
-# Node Selection & Filtering
-all_nodes = sorted(list(G.nodes()))
-filter_col1, filter_col2 = st.columns([2, 1])
-
-with filter_col1:
-    selected_node = st.selectbox(
-        "Focus on Specific Entity Node (Actor, Campaign, Malware, IOC):",
-        ["ALL_ENTITIES"] + all_nodes
+col1, col2 = st.columns([1, 1])
+with col1:
+    search_node = st.text_input(
+        "Search Node Identifier / Actor / TTP:",
+        placeholder="e.g. APT28, Cobalt Strike, T1059.001"
     )
 
-with filter_col2:
-    node_type_filter = st.multiselect(
-        "Filter Node Categories:",
-        ["ACTOR", "CAMPAIGN", "MALWARE", "IOC", "CVE", "TECHNIQUE", "COUNTRY", "SECTOR"],
-        default=["ACTOR", "CAMPAIGN", "MALWARE", "IOC", "CVE", "TECHNIQUE", "COUNTRY", "SECTOR"]
+with col2:
+    min_confidence = st.slider(
+        "Minimum Confidence Threshold (%):",
+        min_value=0.0,
+        max_value=100.0,
+        value=30.0,
+        step=5.0
     )
 
-# Subgraph Extraction & Pruning
-if selected_node != "ALL_ENTITIES":
-    sub_g = graph_engine.extract_subgraph(selected_node, depth=depth)
-else:
-    sub_g = G.copy()
+# Retrieve graph tables from Parquet store
+try:
+    edges_df = store.read_table("edges")
+except Exception:
+    edges_df = pd.DataFrame()
 
-# Filter sub-graph by selected types
-nodes_to_remove = [
-    n for n, d in sub_g.nodes(data=True)
-    if d.get("node_type") not in node_type_filter
-]
-sub_g.remove_nodes_from(nodes_to_remove)
+try:
+    nodes_df = store.read_table("nodes")
+except Exception:
+    nodes_df = pd.DataFrame()
 
-# Filter edges by confidence score
-edges_to_remove = [
-    (u, v) for u, v, d in sub_g.edges(data=True)
-    if d.get("confidence_score", 50.0) < min_confidence
-]
-sub_g.remove_edges_from(edges_to_remove)
+# If empty in lakehouse, fall back to synthesized MITRE graph elements
+if edges_df.empty or nodes_df.empty:
+    try:
+        mitre_db = MitreDatabase()
+        graph_data = mitre_db.build_graph_elements()
+        if nodes_df.empty:
+            nodes_df = pd.DataFrame(graph_data.get("nodes", []))
+        if edges_df.empty:
+            edges_df = pd.DataFrame(graph_data.get("edges", []))
+    except Exception:
+        st.info("Knowledge graph synchronizing...")
 
-# Remove isolated nodes if viewing filtered view
-if selected_node == "ALL_ENTITIES":
-    isolates = list(nx.isolates(sub_g))
-    sub_g.remove_nodes_from(isolates)
+# Apply confidence and query filters
+filtered_edges = edges_df.copy()
+if not filtered_edges.empty:
+    if "confidence" in filtered_edges.columns:
+        filtered_edges = filtered_edges[filtered_edges["confidence"] >= min_confidence]
+    if selected_relation != "All" and "relation_type" in filtered_edges.columns:
+        filtered_edges = filtered_edges[filtered_edges["relation_type"].str.lower() == selected_relation.lower()]
+    if search_node:
+        s = search_node.lower()
+        src_match = (
+            filtered_edges["source_node"].astype(str).str.lower().str.contains(s)
+            if "source_node" in filtered_edges.columns else False
+        )
+        tgt_match = (
+            filtered_edges["target_node"].astype(str).str.lower().str.contains(s)
+            if "target_node" in filtered_edges.columns else False
+        )
+        filtered_edges = filtered_edges[src_match | tgt_match]
 
-# Render Graph Visualizer
-st.markdown("###  Interactive Knowledge Graph Visualizer")
+tab1, tab2, tab3 = st.tabs(["🔗 Graph Edge Explorer", "🏷️ Knowledge Nodes", "📊 Graph Topology Metrics"])
 
-# Legend Strip
-st.markdown("""
-<div style="display: flex; gap: 14px; margin-bottom: 8px; font-size: 11px;">
-    <span style="color: #F85149;">● Actor</span>
-    <span style="color: #D29922;">● Campaign</span>
-    <span style="color: #BC8CFF;">● Malware</span>
-    <span style="color: #58A6FF;">● IOC</span>
-    <span style="color: #F0883E;">● CVE</span>
-    <span style="color: #3FB950;">● Technique</span>
-    <span style="color: #39D353;">● Country</span>
-    <span style="color: #79C0FF;">● Sector</span>
-</div>
-""", unsafe_allow_html=True)
+with tab1:
+    st.subheader("Observed Linkages & Behavioral Associations")
+    if not filtered_edges.empty:
+        display_cols = [c for c in ["source_node", "relation_type", "target_node", "confidence", "weight"] if c in filtered_edges.columns]
+        st.dataframe(filtered_edges[display_cols], use_container_width=True, hide_index=True)
 
-fig = NetworkGraphVisualizer.render_plotly_graph(sub_g, height=620)
-st.plotly_chart(fig, use_container_width=True)
-
-# Deep-Dive Neighbors & Direct Evidence Table
-if selected_node != "ALL_ENTITIES" and G.has_node(selected_node):
-    st.markdown(f"###  Neighbor Linkages for `{selected_node}`")
-
-    neighbor_records = []
-    # Successors (Outbound relationships)
-    for target in G.successors(selected_node):
-        edge_data = G[selected_node][target]
-        neighbor_records.append({
-
-            "Target Entity": target,
-            "Relation Type": edge_data.get("relation_type", "RELATED_TO"),
-            "Confidence": f"{edge_data.get('confidence_score', 50.0)}%",
-            "Weight / Evidence Count": edge_data.get("weight", 1.0),
-            "Last Observed": edge_data.get("last_observed", "N/A")[:10]
-        })
-
-    # Predecessors (Inbound relationships)
-    for source in G.predecessors(selected_node):
-        edge_data = G[source][selected_node]
-        neighbor_records.append({
-
-            "Target Entity": source,
-            "Relation Type": edge_data.get("relation_type", "RELATED_TO"),
-            "Confidence": f"{edge_data.get('confidence_score', 50.0)}%",
-            "Weight / Evidence Count": edge_data.get("weight", 1.0),
-            "Last Observed": edge_data.get("last_observed", "N/A")[:10]
-        })
-
-    if neighbor_records:
-        st.dataframe(pd.DataFrame(neighbor_records), use_container_width=True, hide_index=True)
+        st.download_button(
+            label="📥 Export Relationship Subgraph (CSV)",
+            data=filtered_edges.to_csv(index=False),
+            file_name="threatfusion_relationships.csv",
+            mime="text/csv"
+        )
     else:
-        st.info("No active relationships identified for this entity matching the filters.")
+        st.info("No relationship edges found matching current filter parameters.")
+
+with tab2:
+    st.subheader("Registered Entity Nodes")
+    if not nodes_df.empty:
+        filtered_nodes = nodes_df.copy()
+        if search_node:
+            s = search_node.lower()
+            id_match = (
+                filtered_nodes["node_id"].astype(str).str.lower().str.contains(s)
+                if "node_id" in filtered_nodes.columns else False
+            )
+            label_match = (
+                filtered_nodes["display_label"].astype(str).str.lower().str.contains(s)
+                if "display_label" in filtered_nodes.columns else False
+            )
+            filtered_nodes = filtered_nodes[id_match | label_match]
+
+        display_node_cols = [c for c in ["node_id", "node_type", "display_label"] if c in filtered_nodes.columns]
+        st.dataframe(filtered_nodes[display_node_cols], use_container_width=True, hide_index=True)
+    else:
+        st.info("No entity nodes currently indexed in knowledge lakehouse.")
+
+with tab3:
+    st.subheader("Graph Centrality & Structural Telemetry")
+    metric_col1, metric_col2, metric_col3 = st.columns(3)
+    with metric_col1:
+        st.metric("Total Entity Nodes", len(nodes_df))
+    with metric_col2:
+        st.metric("Total Directed Edges", len(edges_df))
+    with metric_col3:
+        st.metric("Active Subgraph Connections", len(filtered_edges))
