@@ -12,6 +12,7 @@ from utils.entity_resolver import EntityResolver
 
 logger = setup_logger("IngestPipeline")
 
+
 def run_pipeline() -> None:
     store = ParquetStore()
     store.initialize_lake()
@@ -49,12 +50,11 @@ def run_pipeline() -> None:
                 title = entry.get("title", "")
                 summary = entry.get("summary", "")
                 full_text = f"{title} {summary}"
-                # Deterministic Parsing
+
                 report_id = hashlib.sha256(link.encode()).hexdigest()
                 extracted_iocs = IOCExtractor.extract_all(full_text)
                 mitre_tags = MitreTagger.tag_text(full_text)
 
-                # Actor / Malware identification
                 detected_actors = []
                 for candidate in resolver.actor_lookup.keys():
                     if candidate in full_text.lower():
@@ -67,7 +67,6 @@ def run_pipeline() -> None:
                         detected_malware.append(resolver.resolve_malware(candidate))
                 detected_malware = list(set(filter(None, detected_malware)))
 
-                # Add report record
                 new_reports.append({
                     "report_id": report_id,
                     "source_name": feed_name,
@@ -82,7 +81,6 @@ def run_pipeline() -> None:
                     "mitre_hits": [m["technique_id"] for m in mitre_tags]
                 })
 
-                # Flatten extracted IOCs
                 for ioc in extracted_iocs:
                     new_iocs.append({
                         "ioc_id": ioc["ioc_id"],
@@ -105,16 +103,15 @@ def run_pipeline() -> None:
         except Exception as e:
             logger.error(f"Error parsing feed {feed_name}: {str(e)}")
 
-    # Vectorized persist
     if new_reports:
         df_new_reports = pd.DataFrame(new_reports)
-        combined_reports = pd.concat([existing_reports_df, df_new_reports], ignore_index=True).drop_duplicates(subse
+        combined_reports = pd.concat([existing_reports_df, df_new_reports], ignore_index=True).drop_duplicates(subset=["report_id"])
         store.write_table("reports", combined_reports)
         logger.info(f"Persisted {len(new_reports)} new threat reports.")
 
     if new_iocs:
         existing_iocs_df = store.read_table("iocs")
         df_new_iocs = pd.DataFrame(new_iocs)
-        combined_iocs = pd.concat([existing_iocs_df, df_new_iocs], ignore_index=True).drop_duplicates(subset=["ioc_i
+        combined_iocs = pd.concat([existing_iocs_df, df_new_iocs], ignore_index=True).drop_duplicates(subset=["ioc_id"])
         store.write_table("iocs", combined_iocs)
         logger.info(f"Persisted {len(new_iocs)} new IOC records.")
