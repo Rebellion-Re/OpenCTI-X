@@ -1,6 +1,14 @@
 """
-ThreatFusion CTI - Interactive Report Builder Workspace
+ThreatFusion CTI - Threat Report Builder Page
 """
+
+import sys
+from pathlib import Path
+
+# Add project root directory to sys.path
+ROOT_DIR = Path(__file__).resolve().parent.parent.parent
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
 
 import streamlit as st
 from config.settings import CSS_DIR, APP_TITLE
@@ -8,111 +16,59 @@ from core.report_generator.report_builder import ReportBuilder
 
 st.set_page_config(
     page_title=f"{APP_TITLE} | Report Builder",
-    page_icon="",
+    page_icon="📄",
     layout="wide"
 )
 
-# Apply Dark Enterprise Theme
+# Custom CSS
 css_file = CSS_DIR / "dark_theme.css"
 if css_file.exists():
-    with open(css_file, "r") as f:
-        st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+    try:
+        with open(css_file, "r", encoding="utf-8") as f:
+            st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+    except Exception:
+        pass
 
-st.title(" Threat Intelligence Report Generator")
-st.markdown("Compile, customize, and export professional multi-format intelligence dossiers.")
+st.title("📄 Executive Threat Advisory Builder")
+st.markdown("Compile, customize, and generate multi-format CTI reports.")
 
 builder = ReportBuilder()
+sample_data = builder.generate_sample_report_data()
 
-# Configuration Sidebar / Toolbar
-col_type, col_entity, col_tlp, col_fmt = st.columns([2, 2, 1, 1])
+col1, col2 = st.columns([1, 1])
+with col1:
+    title = st.text_input("Advisory Title", sample_data.get("title", ""))
+    tlp = st.selectbox("TLP Marking", ["WHITE", "GREEN", "AMBER", "RED"], index=2)
+    summary = st.text_area("Executive Summary", sample_data.get("summary", ""), height=120)
 
-with col_type:
-    report_type = st.selectbox(
-        "Report Domain:",
-        ["Executive", "Actor", "Campaign", "Malware", "Vulnerability", "IOC", "MITRE", "Threat Hunting"]
-    )
+with col2:
+    actors = st.text_input("Threat Actors (comma-separated)", ", ".join(sample_data.get("threat_actors", [])))
+    malware = st.text_input("Malware Families (comma-separated)", ", ".join(sample_data.get("malware_families", [])))
+    sectors = st.text_input("Targeted Sectors (comma-separated)", ", ".join(sample_data.get("targeted_sectors", [])))
 
-with col_entity:
-    if report_type == "Actor":
-        entity_name = st.text_input("Target Threat Actor:", "APT28")
-    elif report_type == "Campaign":
-        entity_name = st.text_input("Target Intrusion Campaign:", "Operation StealPast")
-    elif report_type == "Malware":
-        entity_name = st.text_input("Target Malware Family:", "Cobalt Strike")
-    elif report_type == "Vulnerability":
-        entity_name = st.text_input("Target CVE Identifier:", "CVE-2023-38831")
-    elif report_type == "MITRE":
-        entity_name = st.text_input("Target ATT&CK Technique ID:", "T1059.001")
-    else:
-        entity_name = "Global Telemetry"
-        st.text_input("Target Entity:", entity_name, disabled=True)
-
-with col_tlp:
-    tlp_choice = st.selectbox("TLP Protocol:", ["AMBER", "RED", "GREEN", "WHITE"])
-
-with col_fmt:
-    export_format = st.selectbox("Export Format:", ["PDF", "DOCX", "HTML"])
+custom_data = {
+    "title": title,
+    "tlp": tlp,
+    "summary": summary,
+    "report_id": sample_data.get("report_id"),
+    "created_at": sample_data.get("created_at"),
+    "threat_actors": [a.strip() for a in actors.split(",") if a.strip()],
+    "malware_families": [m.strip() for m in malware.split(",") if m.strip()],
+    "targeted_sectors": [s.strip() for s in sectors.split(",") if s.strip()],
+    "timeline": sample_data.get("timeline", []),
+    "mitre_ttps": sample_data.get("mitre_ttps", []),
+    "iocs": sample_data.get("iocs", []),
+    "recommendations": sample_data.get("recommendations", [])
+}
 
 st.divider()
+st.subheader("Live Document Preview")
+html_preview = builder.render_html_report(custom_data)
+st.components.v1.html(html_preview, height=600, scrolling=True)
 
-# Generate Report In-Memory
-report_data = builder.build_report(
-    report_type=report_type,
-    entity_name=entity_name,
-    tlp=tlp_choice
+st.download_button(
+    label="📥 Download HTML Report",
+    data=html_preview,
+    file_name=f"{custom_data['report_id']}.html",
+    mime="text/html"
 )
-
-# Action Bar: Download Trigger
-col_action1, col_action2 = st.columns([1, 3])
-with col_action1:
-    with st.spinner(f"Compiling {export_format} Document..."):
-        file_bytes = builder.export(report_data, export_format)
-
-    ext_map = {"PDF": "pdf", "DOCX": "docx", "HTML": "html"}
-    mime_map = {
-        "PDF": "application/pdf",
-        "DOCX": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        "HTML": "text/html"
-    }
-
-    file_name = f"ThreatFusion_{report_type}_{tlp_choice}_{entity_name.replace(' ', '_')}.{ext_map[export_format]}"
-
-    st.download_button(
-        label=f" Download {export_format} Report",
-        data=file_bytes,
-        file_name=file_name,
-        mime=mime_map[export_format],
-        use_container_width=True
-    )
-
-with col_action2:
-    st.caption(f"Status: Report compiled successfully. Ready for dissemination under TLP:{tlp_choice} guidelines.")
-
-st.markdown("###  Live Report Preview")
-
-# Render Live Preview via tabs
-tab_html, tab_summary, tab_mitre = st.tabs([" Document View", " Summary & Metrics", " Mappings & TTPs"])
-
-with tab_html:
-    html_preview = builder.export(report_data, "HTML").decode("utf-8")
-    st.components.v1.html(html_preview, height=800, scrolling=True)
-
-with tab_summary:
-    st.markdown("#### Executive Briefing Summary")
-    st.write(report_data.executive_summary)
-
-    if report_data.strategic_impact:
-        st.markdown("#### Strategic Threat Impact")
-        st.write(report_data.strategic_impact)
-
-    if report_data.recommendations:
-        st.markdown("#### Recommended Actions")
-        for rec in report_data.recommendations:
-            st.info(f"**[{rec.get('priority')}] {rec.get('title')}**: {rec.get('details')}")
-
-with tab_mitre:
-    if report_data.mitre_mappings:
-        st.markdown("#### Correlated ATT&CK TTPs")
-        st.table(report_data.mitre_mappings)
-    else:
-        st.info("No explicit MITRE technique mappings associated with this report configuration.")
