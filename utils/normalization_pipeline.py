@@ -13,45 +13,89 @@ from config.settings import CONFIG_DIR
 
 
 class NormalizationPipeline:
+    DEFAULT_ACTORS: Dict[str, List[str]] = {
+        "APT28": ["Fancy Bear", "Strontium", "Sofacy", "Sednit", "Pawn Storm", "Forest Blizzard"],
+        "APT29": ["Cozy Bear", "Midnight Blizzard", "Nobelium", "The Dukes"],
+        "Lazarus Group": ["HIDDEN COBRA", "Zinc", "Guardians of Peace"],
+    }
+    DEFAULT_MALWARE: Dict[str, List[str]] = {
+        "Cobalt Strike": ["CobaltStrike", "Beacon"],
+        "Qakbot": ["QBot", "QuakBot"],
+    }
+    DEFAULT_TOOLS: Dict[str, List[str]] = {
+        "Mimikatz": ["mimi", "gentilkiwi-mimikatz", "sekurlsa"],
+        "PsExec": ["psexec.exe", "sysinternals psexec"],
+        "BloodHound": ["SharpHound"],
+        "Impacket": ["wmiexec", "psexec.py", "secretsdump"],
+    }
+
     def __init__(self) -> None:
-        self.alias_path = CONFIG_DIR / "alias_dictionary.json"
-        self.sectors_path = CONFIG_DIR / "sectors.yaml"
-        self.geo_path = CONFIG_DIR / "country_regions.json"
+        self.alias_path = Path(CONFIG_DIR) / "alias_dictionary.json"
+        self.sectors_path = Path(CONFIG_DIR) / "sectors.yaml"
+        self.geo_path = Path(CONFIG_DIR) / "country_regions.json"
 
         self.actor_map: Dict[str, str] = {}
         self.malware_map: Dict[str, str] = {}
         self.tool_map: Dict[str, str] = {}
         self.sectors: List[Dict[str, Any]] = []
         self.geo_data: Dict[str, Dict[str, Any]] = {}
+
+        self._seed_defaults()
         self._load_catalogs()
 
+    def _seed_defaults(self) -> None:
+        for can, aliases in self.DEFAULT_ACTORS.items():
+            self.actor_map[can.lower()] = can
+            for a in aliases:
+                self.actor_map[a.lower()] = can
+
+        for can, aliases in self.DEFAULT_MALWARE.items():
+            self.malware_map[can.lower()] = can
+            for a in aliases:
+                self.malware_map[a.lower()] = can
+
+        for can, aliases in self.DEFAULT_TOOLS.items():
+            self.tool_map[can.lower()] = can
+            for a in aliases:
+                self.tool_map[a.lower()] = can
+
     def _load_catalogs(self) -> None:
+        """Loads canonical alias dictionaries, sectors, and geographic mappings."""
         if self.alias_path.exists():
-            with open(self.alias_path, "r", encoding="utf-8") as f:
-                d = json.load(f)
+            try:
+                with open(self.alias_path, "r", encoding="utf-8") as f:
+                    d = json.load(f)
 
-            for can, aliases in d.get("actors", {}).items():
-                self.actor_map[can.lower()] = can
-                for a in aliases:
-                    self.actor_map[a.lower()] = can
+                for can, aliases in d.get("actors", {}).items():
+                    self.actor_map[can.lower()] = can
+                    for a in aliases:
+                        self.actor_map[a.lower()] = can
 
-            for can, aliases in d.get("malware", {}).items():
-                self.malware_map[can.lower()] = can
-                for a in aliases:
-                    self.malware_map[a.lower()] = can
+                for can, aliases in d.get("malware", {}).items():
+                    self.malware_map[can.lower()] = can
+                    for a in aliases:
+                        self.malware_map[a.lower()] = can
 
-            for can, aliases in d.get("tools", {}).items():
-                self.tool_map[can.lower()] = can
-                for a in aliases:
-                    self.tool_map[a.lower()] = can
+                for can, aliases in d.get("tools", {}).items():
+                    self.tool_map[can.lower()] = can
+                    for a in aliases:
+                        self.tool_map[a.lower()] = can
+            except Exception:
+                pass
 
         if self.sectors_path.exists():
-            with open(self.sectors_path, "r", encoding="utf-8") as f:
-                self.sectors = yaml.safe_load(f).get("sectors", [])
+            try:
+                with open(self.sectors_path, "r", encoding="utf-8") as f:
+                    self.sectors = yaml.safe_load(f).get("sectors", [])
+            except Exception:
+                pass
 
         if self.geo_path.exists():
-            with open(self.geo_path, "r", encoding="utf-8") as f:
-                self.geo_data = json.load(f)
+            try:
+                with open(self.geo_path, "r", encoding="utf-8") as f:
+                    self.geo_data = json.load(f)
+            except Exception:
+                pass
 
     def resolve_threat_actors(self, text: str) -> List[str]:
         t_low = text.lower()
