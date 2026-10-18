@@ -1,88 +1,62 @@
 """
-ThreatFusion CTI - ATT&CK Navigator UI Component
-Produces an OpenCTI / ATT&CK Navigator-style matrix in Streamlit.
+ThreatFusion CTI - MITRE Matrix HTML Visualizer Component
 """
 
-import html
-from typing import Dict, Any, List
+from typing import Dict, Any
 import pandas as pd
-from core.mitre.database import MitreDatabase
 
 
 class MitreMatrixVisualizer:
     @staticmethod
-    def render_matrix_html(
-        techniques_df: pd.DataFrame,
-        heatmap_data: Dict[str, Any],
-        selected_technique: str = ""
-    ) -> str:
+    def render_matrix_html(techniques_df: pd.DataFrame, layer: Dict[str, Any]) -> str:
+        """Renders an interactive responsive ATT&CK matrix view using HTML/CSS."""
+        if techniques_df.empty:
+            return "<div style='color: #888;'>No techniques available to render.</div>"
+
+        tactics_order = [
+            "initial-access", "execution", "persistence", "privilege-escalation",
+            "defense-evasion", "credential-access", "discovery", "lateral-movement",
+            "collection", "command-and-control", "exfiltration", "impact"
+        ]
+
+        html = """
+        <div style="overflow-x: auto; max-height: 480px; border: 1px solid #30363d; border-radius: 6px; padding: 12px; background-color: #0d1117;">
+          <div style="display: flex; gap: 8px;">
         """
-        Generates full HTML/CSS table layout mirroring the official ATT&CK Navigator.
-        """
-        scores = heatmap_data.get("techniques", {})
 
-        # Group techniques by primary tactic
-        tactic_columns: Dict[str, List[Dict[str, Any]]] = {
-            t: [] for t in MitreDatabase.TACTIC_ORDER
-        }
-
-        # Index primary parent techniques
-        for _, row in techniques_df.iterrows():
-            if row.get("is_subtechnique", False):
-                continue
-
-            tid = row["technique_id"]
-            name = row["name"]
-            tactics = row.get("tactics", [])
-
-            t_score_info = scores.get(tid, {"count": 0, "score": 0.0, "color": "#161B22"})
-
-            tech_card = {
-                "id": tid,
-                "name": name,
-                "count": t_score_info["count"],
-                "color": t_score_info["color"],
-                "selected": (tid == selected_technique)
-            }
-
-            for tac in tactics:
-                if tac in tactic_columns:
-                    tactic_columns[tac].append(tech_card)
-
-        # Build HTML table columns
-        cols_html = []
-        for tac_slug in MitreDatabase.TACTIC_ORDER:
-            tac_title = MitreDatabase.TACTIC_DISPLAY_NAMES.get(tac_slug, tac_slug.title())
-            cards = tactic_columns.get(tac_slug, [])
-
-            cards_html = []
-            for c in cards:
-                border_style = "2px solid #58A6FF" if c["selected"] else "1px solid #30363D"
-                count_badge = f"<span style='float:right; font-size:10px; color:#8B949E;'>{c['count']}</span>" if c[
-
-                cards_html.append(f"""
-                <div style="background-color: {c['color']}; border: {border_style}; border-radius: 4px; padding: 6px
-                    <div style="font-weight: 600; color: #58A6FF;">{c['id']} {count_badge}</div>
-                    <div style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{html.escape(c['nam
-                </div>
-                """)
-
-            col_block = f"""
-            <div style="min-width: 140px; max-width: 160px; display: flex; flex-direction: column; background: #0E11
-                <div style="font-weight: 700; font-size: 11px; text-transform: uppercase; color: #8B949E; margin-bot
-                    {tac_title}
-                    <div style="font-size: 9px; color: #484F58;">({len(cards)})</div>
-                </div>
-                <div style="display: flex; flex-direction: column; max-height: 700px; overflow-y: auto; padding-righ
-                    {''.join(cards_html)}
-                </div>
-            </div>
+        for tactic in tactics_order:
+            tactic_label = tactic.replace("-", " ").title()
+            html += f"""
+            <div style="flex: 1; min-width: 130px; background: #161b22; border-radius: 4px; padding: 6px;">
+              <div style="font-size: 0.75rem; font-weight: bold; color: #58a6ff; margin-bottom: 6px; text-align: center; text-transform: uppercase;">
+                {tactic_label}
+              </div>
             """
-            cols_html.append(col_block)
 
-        matrix_container = f"""
-        <div style="display: flex; gap: 8px; overflow-x: auto; padding: 12px 4px; background-color: #0E1117; border-
-            {''.join(cols_html)}
+            # Find matching techniques for this tactic
+            for _, row in techniques_df.iterrows():
+                row_tactics = row.get("tactics", [])
+                if not isinstance(row_tactics, list):
+                    row_tactics = [row_tactics]
+
+                if any(tactic in str(t).lower() for t in row_tactics):
+                    tid = row.get("technique_id", "")
+                    tname = row.get("name", "")
+                    heat = layer.get(tid, {})
+                    bg_color = heat.get("color", "#21262d")
+                    text_color = "#ffffff" if heat else "#8b949e"
+                    score_badge = f"<span style='float: right; font-size: 0.65rem; background: #000; border-radius: 3px; padding: 1px 4px;'>{heat.get('count', 0)}</span>" if heat else ""
+
+                    html += f"""
+                    <div style="background-color: {bg_color}; color: {text_color}; font-size: 0.68rem; padding: 4px 6px; margin-bottom: 4px; border-radius: 3px; word-break: break-word;">
+                      <strong>{tid}</strong>: {tname} {score_badge}
+                    </div>
+                    """
+
+            html += "</div>"
+
+        html += """
+          </div>
         </div>
         """
-        return matrix_container
+        return html
