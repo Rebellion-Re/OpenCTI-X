@@ -1,15 +1,13 @@
 {
-  "US": {"name": "United States", "region": "Americas", "subregion": "Northern America", "lat": 37.0902, "lon": -95.
-  "GB": {"name": "United Kingdom", "region": "Europe", "subregion": "Northern Europe", "lat": 55.3781, "lon": -3.436
+  "US": {"name": "United States", "region": "Americas", "subregion": "Northern America", "lat": 37.0902, "lon": -95.7129},
+  "UA": {"name": "Ukraine", "region": "Europe", "subregion": "Eastern Europe", "lat": 48.3794, "lon": 31.1656},
+  "RU": {"name": "Russia", "region": "Europe", "subregion": "Eastern Europe", "lat": 61.5240, "lon": 105.3188},
+  "CN": {"name": "China", "region": "Asia", "subregion": "Eastern Asia", "lat": 35.8617, "lon": 104.1954},
+  "KP": {"name": "North Korea", "region": "Asia", "subregion": "Eastern Asia", "lat": 40.3399, "lon": 127.5101},
+  "IR": {"name": "Iran", "region": "Asia", "subregion": "Southern Asia", "lat": 32.4279, "lon": 53.6880},
+  "GB": {"name": "United Kingdom", "region": "Europe", "subregion": "Northern Europe", "lat": 55.3781, "lon": -3.4360},
   "DE": {"name": "Germany", "region": "Europe", "subregion": "Western Europe", "lat": 51.1657, "lon": 10.4515},
   "FR": {"name": "France", "region": "Europe", "subregion": "Western Europe", "lat": 46.2276, "lon": 2.2137},
-  "UA": {"name": "Ukraine", "region": "Europe", "subregion": "Eastern Europe", "lat": 48.3794, "lon": 31.1656},
-  "RU": {"name": "Russian Federation", "region": "Europe", "subregion": "Eastern Europe", "lat": 61.5240, "lon": 105
-  "CN": {"name": "China", "region": "Asia", "subregion": "Eastern Asia", "lat": 35.8617, "lon": 104.1954},
-  "IR": {"name": "Iran", "region": "Asia", "subregion": "Southern Asia", "lat": 32.4279, "lon": 53.6880},
-  "KP": {"name": "North Korea", "region": "Asia", "subregion": "Eastern Asia", "lat": 40.3399, "lon": 127.5101},
   "IL": {"name": "Israel", "region": "Asia", "subregion": "Western Asia", "lat": 31.0461, "lon": 34.8516},
-  "JP": {"name": "Japan", "region": "Asia", "subregion": "Eastern Asia", "lat": 36.2048, "lon": 138.2529},
-  "IN": {"name": "India", "region": "Asia", "subregion": "Southern Asia", "lat": 20.5937, "lon": 78.9629},
-  "AU": {"name": "Australia", "region": "Oceania", "subregion": "Australia and New Zealand", "lat": -25.2744, "lon":
+  "AU": {"name": "Australia", "region": "Oceania", "subregion": "Australia and New Zealand", "lat": -25.2744, "lon": 133.7751}
 }
