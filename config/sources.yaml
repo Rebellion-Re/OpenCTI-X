@@ -1,0 +1,40 @@
+sources:
+  - id: bleepingcomputer
+    name: BleepingComputer
+    url: https://www.bleepingcomputer.com/feed/
+    type: rss
+    reliability_tier: HIGH_TRUST
+    category: OSINT
+    enabled: true
+
+  - id: thehackernews
+    name: The Hacker News
+    url: https://feeds.feedburner.com/TheHackersNews
+    type: rss
+    reliability_tier: HIGH_TRUST
+    category: OSINT
+    enabled: true
+
+  - id: cisco_talos
+    name: Cisco Talos Blog
+    url: https://blog.talosintelligence.com/rss/
+    type: rss
+    reliability_tier: HIGH_TRUST
+    category: Vendor Research
+    enabled: true
+
+  - id: securelist
+    name: Kaspersky Securelist
+    url: https://securelist.com/feed/
+    type: rss
+    reliability_tier: HIGH_TRUST
+    category: Vendor Research
+    enabled: true
+
+  - id: cisa_kev
+    name: CISA Known Exploited Vulnerabilities Catalog
+    url: https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json
+    type: json_feed
+    reliability_tier: HIGH_TRUST
+    category: Government Advisory
+    enabled: true

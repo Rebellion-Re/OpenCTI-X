@@ -1,0 +1,52 @@
+/* ThreatFusion Enterprise SOC Dark Design System */
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@300;400;600;
+
+html, body, [class*="st-"] {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    color: #C9D1D9;
+}
+
+code, pre, [class*="stCode"] {
+    font-family: 'JetBrains Mono', monospace !important;
+}
+
+.stApp {
+    background-color: #0E1117;
+}
+
+/* Metric Cards */
+.soc-card {
+    background-color: #161B22;
+    border: 1px solid #30363D;
+    border-radius: 6px;
+    padding: 16px;
+    margin-bottom: 12px;
+}
+
+.soc-metric-title {
+    color: #8B949E;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.soc-metric-value {
+    color: #58A6FF;
+    font-size: 1.8rem;
+    font-weight: 700;
+    margin-top: 4px;
+}
+
+/* Table overrides */
+div[data-testid="stDataFrame"] {
+    border: 1px solid #30363D;
+    border-radius: 6px;
+    background-color: #161B22;
+}
+
+/* Sidebar Custom Styling */
+section[data-testid="stSidebar"] {
+    background-color: #161B22;
+    border-right: 1px solid #30363D;
+}

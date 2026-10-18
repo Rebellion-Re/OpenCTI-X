@@ -1,0 +1,24 @@
+sectors:
+  - name: Defense Industrial Base
+    code: DIB
+    keywords: ["military", "defense", "aerospace", "weapons", "contractor", "army", "navy", "air force"]
+
+  - name: Financial Services
+    code: FIN
+    keywords: ["bank", "banking", "financial", "crypto", "treasury", "fintech", "securities", "payment"]
+
+  - name: Healthcare and Public Health
+    code: HPH
+    keywords: ["hospital", "healthcare", "medical", "clinic", "pharmaceutical", "health service", "biomedical"]
+
+  - name: Critical Infrastructure & Energy
+    code: ENE
+    keywords: ["energy", "pipeline", "oil", "gas", "electric", "power grid", "nuclear", "utilities", "water"]
+
+  - name: Information Technology
+    code: IT
+    keywords: ["cloud", "saas", "software", "datacenter", "telecom", "managed service", "msp", "isp"]
+
+  - name: Government & Public Sector
+    code: GOV
+    keywords: ["government", "ministry", "municipality", "federal", "parliament", "embassy", "diplomatic"]
