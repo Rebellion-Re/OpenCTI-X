@@ -15,41 +15,39 @@ class ThreatParsers:
     # ---------------------------------------------------------
     # COMPILED REGEX CATALOG
     # ---------------------------------------------------------
-    # Network Indicators
     IPV4_PATTERN = re.compile(
-        r'\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b'
+        r"\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b"
     )
     IPV6_PATTERN = re.compile(
-        r'\b(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}\b|'
-        r'\b(?:[0-9a-fA-F]{1,4}:){1,7}:|'
-        r'\b:[0-9a-fA-F]{1,4}(?::[0-9a-fA-F]{1,4}){1,6}\b|'
-        r'\b[0-9a-fA-F]{1,4}:(?::[0-9a-fA-F]{1,4}){1,6}\b'
+        r"\b(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}\b|"
+        r"\b(?:[0-9a-fA-F]{1,4}:){1,7}:|"
+        r"\b:[0-9a-fA-F]{1,4}(?::[0-9a-fA-F]{1,4}){1,6}\b|"
+        r"\b[0-9a-fA-F]{1,4}:(?::[0-9a-fA-F]{1,4}){1,6}\b"
     )
     URL_PATTERN = re.compile(
-        r'\b(?:https?|ftp|hxxps?|h[xX]{2}ps?)://(?:[a-zA-Z0-9$_.+!*',;:&=~-]|%[0-9a-fA-F]{2})+[^\s<>"\'{}|\\^`]*',
+        r"""\b(?:https?|ftp|hxxps?|h[xX]{2}ps?)://(?:[a-zA-Z0-9$_.+!*',;:&=~-]|%[0-9a-fA-F]{2})+[^\s<>"'{}|\\^`]*""",
         re.IGNORECASE
     )
     DOMAIN_PATTERN = re.compile(
-        r'\b(?!(?:https?|ftp|hxxps?|h[xX]{2}ps?)://)(?:[a-zA-Z0-9](?:[a-zA-Z0-9\-_]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2
+        r"\b(?!(?:https?|ftp|hxxps?|h[xX]{2}ps?)://)(?:[a-zA-Z0-9](?:[a-zA-Z0-9\-_]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,63}\b",
         re.IGNORECASE
     )
     EMAIL_PATTERN = re.compile(
-        r'\b[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,64}\b'
+        r"\b[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,64}\b"
     )
 
     # Cryptographic Hashes
-    MD5_PATTERN = re.compile(r'\b[a-fA-F0-9]{32}\b')
-    SHA1_PATTERN = re.compile(r'\b[a-fA-F0-9]{40}\b')
-    SHA256_PATTERN = re.compile(r'\b[a-fA-F0-9]{64}\b')
+    MD5_PATTERN = re.compile(r"\b[a-fA-F0-9]{32}\b")
+    SHA1_PATTERN = re.compile(r"\b[a-fA-F0-9]{40}\b")
+    SHA256_PATTERN = re.compile(r"\b[a-fA-F0-9]{64}\b")
 
     # Vulnerability Identifiers
-    CVE_PATTERN = re.compile(r'\bCVE-(?:1999|20[0-9]{2})-[0-9]{4,7}\b', re.IGNORECASE)
+    CVE_PATTERN = re.compile(r"\bCVE-(?:1999|20[0-9]{2})-[0-9]{4,7}\b", re.IGNORECASE)
 
     # MITRE ATT&CK Identifiers
-    MITRE_TECHNIQUE_PATTERN = re.compile(r'\bT1[0-9]{3}(?:\.[0-9]{3})?\b')
-    MITRE_TACTIC_PATTERN = re.compile(r'\bTA00[0-9]{2}\b')
+    MITRE_TECHNIQUE_PATTERN = re.compile(r"\bT1[0-9]{3}(?:\.[0-9]{3})?\b")
+    MITRE_TACTIC_PATTERN = re.compile(r"\bTA00[0-9]{2}\b")
 
-    # File extensions to ignore when validating raw domain matches
     EXCLUDED_EXTENSIONS = {
         'exe', 'dll', 'sys', 'bat', 'vbs', 'ps1', 'sh', 'py', 'bin', 'elf', 'doc',
         'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'pdf', 'zip', 'tar', 'gz', '7z', 'rar',
@@ -57,7 +55,6 @@ class ThreatParsers:
         'xml', 'html', 'css', 'js', 'md', 'tmp', 'log', 'bak', 'cfg', 'ini', 'iso'
     }
 
-    # Common TLD whitelist validation for high-precision domain filtering
     COMMON_TLDS = {
         'com', 'net', 'org', 'edu', 'gov', 'mil', 'int', 'io', 'ai', 'co', 'me', 'info',
         'biz', 'xyz', 'top', 'club', 'online', 'site', 'pro', 'mobi', 'ru', 'cn', 'ir',
@@ -67,20 +64,18 @@ class ThreatParsers:
 
     @staticmethod
     def refang(text: str) -> str:
-        """Restores defanged indicators to standard RFC formats for parsing."""
         if not text:
             return ""
         s = text
-        s = re.sub(r'\[\.\]|\(\.\)|\{\.\}', '.', s)
-        s = re.sub(r'\[:\]|\(:\]', ':', s)
-        s = re.sub(r'hxxps?://', lambda m: 'https://' if 's' in m.group(0).lower() else 'http://', s, flags=re.I)
-        s = re.sub(r'h[xX]{2}ps?://', lambda m: 'https://' if 's' in m.group(0).lower() else 'http://', s, flags=re.
-        s = re.sub(r'\[@\]|\(@\)', '@', s)
+        s = re.sub(r"\[\.\]|\(\.\)|\{\.\}", ".", s)
+        s = re.sub(r"\[:\]|\(:\]", ":", s)
+        s = re.sub(r"hxxps?://", lambda m: "https://" if "s" in m.group(0).lower() else "http://", s, flags=re.I)
+        s = re.sub(r"h[xX]{2}ps?://", lambda m: "https://" if "s" in m.group(0).lower() else "http://", s, flags=re.I)
+        s = re.sub(r"\[@\]|\(@\)", "@", s)
         return s
 
     @staticmethod
     def defang(indicator: str, ioc_type: str) -> str:
-        """Defangs parsed indicators for safe storage, display, and export."""
         if not indicator:
             return ""
         if ioc_type in ("DOMAIN", "IPV4", "IPV6"):
@@ -100,7 +95,6 @@ class ThreatParsers:
 
     @classmethod
     def is_valid_public_ip(cls, ip_str: str) -> bool:
-        """Validates that IP string is valid and not loopback, private, multicast, or bogon."""
         try:
             ip = ipaddress.ip_address(ip_str)
             return not (
@@ -120,7 +114,6 @@ class ThreatParsers:
         results = []
         seen = set()
 
-        # IPv4
         for match in cls.IPV4_PATTERN.finditer(refanged):
             ip = match.group(0)
             if ip not in seen and cls.is_valid_public_ip(ip):
@@ -132,7 +125,6 @@ class ThreatParsers:
                     "type": "IPV4"
                 })
 
-        # IPv6
         for match in cls.IPV6_PATTERN.finditer(refanged):
             ip = match.group(0)
             if ip not in seen and cls.is_valid_public_ip(ip):
@@ -153,7 +145,7 @@ class ThreatParsers:
         seen = set()
 
         for match in cls.URL_PATTERN.finditer(refanged):
-            raw_url = match.group(0).rstrip('.,;)]}>"\'')
+            raw_url = match.group(0).rstrip(".,;)]}>\"'")
             if raw_url.lower() in seen:
                 continue
             try:
@@ -182,11 +174,7 @@ class ThreatParsers:
             dom = match.group(0).lower().rstrip('.')
             ext = dom.split('.')[-1]
 
-            if ext in cls.EXCLUDED_EXTENSIONS:
-                continue
-            if ext not in cls.COMMON_TLDS:
-                continue
-            if dom in seen or len(dom) < 4:
+            if ext in cls.EXCLUDED_EXTENSIONS or ext not in cls.COMMON_TLDS or dom in seen or len(dom) < 4:
                 continue
 
             seen.add(dom)
@@ -226,46 +214,29 @@ class ThreatParsers:
         results = []
         seen = set()
 
-        # Extract SHA256
         sha256_matches = set()
         for match in cls.SHA256_PATTERN.finditer(text):
             h = match.group(0).lower()
             sha256_matches.add(h)
             if h not in seen:
                 seen.add(h)
-                results.append({
-                    "raw": match.group(0),
-                    "normalized": h,
-                    "type": "SHA256"
-                })
+                results.append({"raw": match.group(0), "normalized": h, "type": "SHA256"})
 
-        # Extract SHA1
         sha1_matches = set()
         for match in cls.SHA1_PATTERN.finditer(text):
             h = match.group(0).lower()
-            # Prevent substring matching against larger sha256
             if not any(h in full_sha for full_sha in sha256_matches):
                 sha1_matches.add(h)
                 if h not in seen:
                     seen.add(h)
-                    results.append({
-                        "raw": match.group(0),
-                        "normalized": h,
-                        "type": "SHA1"
-                    })
+                    results.append({"raw": match.group(0), "normalized": h, "type": "SHA1"})
 
-        # Extract MD5
         for match in cls.MD5_PATTERN.finditer(text):
             h = match.group(0).lower()
-            # Prevent substring matching against sha256 or sha1
             if not any(h in full_h for full_h in sha256_matches | sha1_matches):
                 if h not in seen:
                     seen.add(h)
-                    results.append({
-                        "raw": match.group(0),
-                        "normalized": h,
-                        "type": "MD5"
-                    })
+                    results.append({"raw": match.group(0), "normalized": h, "type": "MD5"})
 
         return results
 
