@@ -17,6 +17,7 @@ from config.logging_config import setup_logger
 
 logger = setup_logger("ParquetStore")
 
+
 class ParquetStore:
     def __init__(self) -> None:
         self.processed_dir: Path = PROCESSED_DATA_DIR
@@ -31,7 +32,6 @@ class ParquetStore:
             p.mkdir(parents=True, exist_ok=True)
 
     def initialize_lake(self) -> None:
-        """Create empty Parquet tables with explicit types if not already existing."""
         tables: Dict[str, Dict[str, Any]] = {
             "actors": {
                 "actor_id": "string", "canonical_name": "string", "aliases": "object",
@@ -80,7 +80,6 @@ class ParquetStore:
                 self.write_table(table_name, df)
                 logger.info(f"Initialized blank table: {file_path.name}")
 
-        # Initialize Graph Tables
         graph_tables = {
             "nodes": {
                 "node_id": "string", "node_type": "string", "display_label": "string",
@@ -113,7 +112,7 @@ class ParquetStore:
             return pd.DataFrame()
         return pq.read_table(target_path).to_pandas()
 
-        def query(self, sql_query: str) -> pd.DataFrame:
+    def query(self, sql_query: str) -> pd.DataFrame:
         """Execute in-memory DuckDB analytical queries across all active Parquet files."""
         for f in self.processed_dir.glob("*.parquet"):
             self.duck_conn.execute(f"CREATE OR REPLACE VIEW {f.stem} AS SELECT * FROM read_parquet('{f.as_posix()}');")
