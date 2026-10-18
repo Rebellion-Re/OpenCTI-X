@@ -26,7 +26,6 @@ class NormalizationPipeline:
         self._load_catalogs()
 
     def _load_catalogs(self) -> None:
-        """Loads canonical alias dictionaries, sectors, and geographic mappings."""
         if self.alias_path.exists():
             with open(self.alias_path, "r", encoding="utf-8") as f:
                 d = json.load(f)
@@ -55,7 +54,6 @@ class NormalizationPipeline:
                 self.geo_data = json.load(f)
 
     def resolve_threat_actors(self, text: str) -> List[str]:
-        """Resolves threat actor mentions to canonical actor names."""
         t_low = text.lower()
         matched = set()
         for k in sorted(self.actor_map.keys(), key=len, reverse=True):
@@ -64,7 +62,6 @@ class NormalizationPipeline:
         return sorted(list(matched))
 
     def resolve_malware(self, text: str) -> List[str]:
-        """Resolves malware mentions to canonical malware families."""
         t_low = text.lower()
         matched = set()
         for k in sorted(self.malware_map.keys(), key=len, reverse=True):
@@ -73,7 +70,6 @@ class NormalizationPipeline:
         return sorted(list(matched))
 
     def resolve_tools(self, text: str) -> List[str]:
-        """Resolves dual-use / penetration testing utility mentions."""
         t_low = text.lower()
         matched = set()
         for k in sorted(self.tool_map.keys(), key=len, reverse=True):
@@ -82,7 +78,6 @@ class NormalizationPipeline:
         return sorted(list(matched))
 
     def resolve_campaigns(self, text: str) -> List[str]:
-        """Extracts designated intrusion campaign titles."""
         campaign_patterns = [
             re.compile(r"\bOperation\s+[A-Z][a-zA-Z0-9_\-\s]{2,20}\b"),
             re.compile(r"\bCampaign\s+[A-Z][a-zA-Z0-9_\-\s]{2,20}\b"),
@@ -100,7 +95,6 @@ class NormalizationPipeline:
         return sorted(list(found))
 
     def resolve_sectors(self, text: str) -> List[str]:
-        """Identifies impacted critical infrastructure sectors."""
         t_low = text.lower()
         matched = set()
         for s in self.sectors:
@@ -112,7 +106,6 @@ class NormalizationPipeline:
         return sorted(list(matched))
 
     def resolve_geopolitics(self, text: str) -> Tuple[List[str], List[str]]:
-        """Identifies impacted ISO country codes and continental regions."""
         t_low = text.lower()
         countries, regions = set(), set()
 
