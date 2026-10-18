@@ -36,15 +36,12 @@ class ThreatParsers:
         r"\b[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,64}\b"
     )
 
-    # Cryptographic Hashes
     MD5_PATTERN = re.compile(r"\b[a-fA-F0-9]{32}\b")
     SHA1_PATTERN = re.compile(r"\b[a-fA-F0-9]{40}\b")
     SHA256_PATTERN = re.compile(r"\b[a-fA-F0-9]{64}\b")
 
-    # Vulnerability Identifiers
     CVE_PATTERN = re.compile(r"\bCVE-(?:1999|20[0-9]{2})-[0-9]{4,7}\b", re.IGNORECASE)
 
-    # MITRE ATT&CK Identifiers
     MITRE_TECHNIQUE_PATTERN = re.compile(r"\bT1[0-9]{3}(?:\.[0-9]{3})?\b")
     MITRE_TACTIC_PATTERN = re.compile(r"\bTA00[0-9]{2}\b")
 
