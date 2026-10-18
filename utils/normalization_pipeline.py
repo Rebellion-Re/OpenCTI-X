@@ -123,9 +123,9 @@ class NormalizationPipeline:
 
     def resolve_campaigns(self, text: str) -> List[str]:
         campaign_patterns = [
-            re.compile(r"\bOperation\s+[A-Z][a-zA-Z0-9_\-\s]{2,20}\b"),
-            re.compile(r"\bCampaign\s+[A-Z][a-zA-Z0-9_\-\s]{2,20}\b"),
-            re.compile(r"\b[A-Z][a-zA-Z0-9_]+\s+Campaign\b"),
+            re.compile(r"\bOperation\s+[A-Z][a-zA-Z0-9_-]+(?:\s+[A-Z][a-zA-Z0-9_-]+)*\b"),
+            re.compile(r"\bCampaign\s+[A-Z][a-zA-Z0-9_-]+(?:\s+[A-Z][a-zA-Z0-9_-]+)*\b"),
+            re.compile(r"\b[A-Z][a-zA-Z0-9_-]+(?:\s+[A-Z][a-zA-Z0-9_-]+)*\s+Campaign\b"),
         ]
         found = set()
         for pat in campaign_patterns:
