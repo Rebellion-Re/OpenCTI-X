@@ -35,5 +35,7 @@ jobs:
           mypy database/ utils/ config/ --ignore-missing-imports
 
       - name: Execute Pytest Suite
+        env:
+          PYTHONPATH: .
         run: |
-          pytest -v
+          python -m pytest -v
