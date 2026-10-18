@@ -1,26 +1,22 @@
 """
-ThreatFusion CTI - Categorization & MITRE ATT&CK Mapping Engine
-Deterministic classification of TTPs, tactics, mitigations, and execution behaviors.
+ThreatFusion CTI - Behavioral TTP & Categorization Engine
+Maps text artifacts to MITRE ATT&CK techniques, tactics, and operational categories.
 """
 
 import re
-from typing import List, Dict, Any, Set
+from typing import List, Dict, Any
 
 
 class CategorizationEngine:
-    # -------------------------------------------------------------------------
-    # BEHAVIORAL TTP RULE REGISTRY (Mapped to MITRE ATT&CK Enterprise Matrix)
-    # -------------------------------------------------------------------------
     BEHAVIOR_RULES = [
-        # INITIAL ACCESS
         {
             "technique_id": "T1566.001",
             "technique_name": "Spearphishing Attachment",
             "tactic": "Initial Access",
             "tactic_id": "TA0001",
             "patterns": [
-                r'\bphishing\b', r'\bmalicious\s+attachment\b', r'\bmacro-enabled\b',
-                r'\biso\s+image\b', r'\blnk\s+file\b', r'\bspear-?phishing\b'
+                r"\bphishing\b", r"\bmalicious\s+attachment\b", r"\bmacro-enabled\b",
+                r"\biso\s+image\b", r"\blnk\s+file\b", r"\bspear-?phishing\b"
             ]
         },
         {
@@ -29,19 +25,18 @@ class CategorizationEngine:
             "tactic": "Initial Access",
             "tactic_id": "TA0001",
             "patterns": [
-                r'\bexploit(ed|ing)?\s+vulnerability\b', r'\bzero-day\b', r'\brce\b',
-                r'\bremote\s+code\s+execution\b', r'\bpublic-facing\b'
+                r"\bexploit(ed|ing)?\s+vulnerability\b", r"\bzero-day\b", r"\brce\b",
+                r"\bremote\s+code\s+execution\b", r"\bpublic-facing\b"
             ]
         },
-        # EXECUTION
         {
             "technique_id": "T1059.001",
             "technique_name": "PowerShell",
             "tactic": "Execution",
             "tactic_id": "TA0002",
             "patterns": [
-                r'\bpowershell\.exe\b', r'\bpwsh\b', r'\bdownloadstring\b',
-                r'\binvoke-expression\b', r'\b-enc\s+[a-zA-Z0-9+/=]{10,}\b', r'\biex\b'
+                r"\bpowershell\.exe\b", r"\bpwsh\b", r"\bdownloadstring\b",
+                r"\binvoke-expression\b", r"\b-enc\s+[a-zA-Z0-9+/=]{10,}\b", r"\biex\b"
             ]
         },
         {
@@ -50,8 +45,8 @@ class CategorizationEngine:
             "tactic": "Execution",
             "tactic_id": "TA0002",
             "patterns": [
-                r'\bcmd\.exe\b', r'\b/c\s+net\s+user\b', r'\b/c\s+ping\b',
-                r'\b/c\s+echo\b', r'\bbatch\s+script\b'
+                r"\bcmd\.exe\b", r"\b/c\s+net\s+user\b", r"\b/c\s+ping\b",
+                r"\b/c\s+echo\b", r"\bbatch\s+script\b"
             ]
         },
         {
@@ -60,19 +55,18 @@ class CategorizationEngine:
             "tactic": "Execution",
             "tactic_id": "TA0002",
             "patterns": [
-                r'\bwmic\.exe\b', r'\bwmic\s+process\s+call\s+create\b',
-                r'\bmanagementobjectsearcher\b', r'\bwmi\s+query\b'
+                r"\bwmic\.exe\b", r"\bwmic\s+process\s+call\s+create\b",
+                r"\bmanagementobjectsearcher\b", r"\bwmi\s+query\b"
             ]
         },
-        # PERSISTENCE
         {
             "technique_id": "T1547.001",
             "technique_name": "Registry Run Keys / Startup Folder",
             "tactic": "Persistence",
             "tactic_id": "TA0003",
             "patterns": [
-                r'currentversion\\run', r'currentversion\\runonce',
-                r'\bstartup\s+folder\b', r'\breg\s+add\b.*run'
+                r"currentversion\\run", r"currentversion\\runonce",
+                r"\bstartup\s+folder\b", r"\breg\s+add\b.*run"
             ]
         },
         {
@@ -81,18 +75,17 @@ class CategorizationEngine:
             "tactic": "Persistence",
             "tactic_id": "TA0003",
             "patterns": [
-                r'\bschtasks\.exe\b', r'\b/create\s+/tn\b', r'\bscheduled\s+task\b'
+                r"\bschtasks\.exe\b", r"\b/create\s+/tn\b", r"\bscheduled\s+task\b"
             ]
         },
-        # DEFENSE EVASION
         {
             "technique_id": "T1055",
             "technique_name": "Process Injection",
             "tactic": "Defense Evasion",
             "tactic_id": "TA0005",
             "patterns": [
-                r'\bprocess\s+injection\b', r'\bprocess\s+hollowing\b',
-                r'\bcreateremotethread\b', r'\bvirtualallocex\b', r'\bwriteprocessmemory\b'
+                r"\bprocess\s+injection\b", r"\bprocess\s+hollowing\b",
+                r"\bcreateremotethread\b", r"\bvirtualallocex\b", r"\bwriteprocessmemory\b"
             ]
         },
         {
@@ -101,8 +94,8 @@ class CategorizationEngine:
             "tactic": "Defense Evasion",
             "tactic_id": "TA0005",
             "patterns": [
-                r'\bobfuscat(ed|ion)\b', r'\bbase64-encoded\b', r'\bxor\s+encrypt(ed|ion)\b',
-                r'\bpacking\b', r'\bpacked\s+with\s+upx\b'
+                r"\bobfuscat(ed|ion)\b", r"\bbase64-encoded\b", r"\bxor\s+encrypt(ed|ion)\b",
+                r"\bpacking\b", r"\bpacked\s+with\s+upx\b"
             ]
         },
         {
@@ -111,20 +104,19 @@ class CategorizationEngine:
             "tactic": "Defense Evasion",
             "tactic_id": "TA0005",
             "patterns": [
-                r'\bdisable\s+(defender|antivirus|edr|security)\b',
-                r'\bset-mppreference\s+-disablerealtime\b',
-                r'\bstop-service\b.*(windefend|sentinel|crowdstrike)'
+                r"\bdisable\s+(defender|antivirus|edr|security)\b",
+                r"\bset-mppreference\s+-disablerealtime\b",
+                r"\bstop-service\b.*(windefend|sentinel|crowdstrike)"
             ]
         },
-        # CREDENTIAL ACCESS
         {
             "technique_id": "T1003.001",
             "technique_name": "LSASS Memory",
             "tactic": "Credential Access",
             "tactic_id": "TA0006",
             "patterns": [
-                r'\blsass\.exe\b', r'\bsekurlsa::logonpasswords\b',
-                r'\bprocdump.*lsass\b', r'\bcomsvcs\.dll.*minidump\b'
+                r"\blsass\.exe\b", r"\bsekurlsa::logonpasswords\b",
+                r"\bprocdump.*lsass\b", r"\bcomsvcs\.dll.*minidump\b"
             ]
         },
         {
@@ -133,19 +125,18 @@ class CategorizationEngine:
             "tactic": "Credential Access",
             "tactic_id": "TA0006",
             "patterns": [
-                r'\bcredential\s+stealer\b', r'\bbrowser\s+passwords\b',
-                r'\blogin\s+data\b', r'\bvaultcli\.dll\b'
+                r"\bcredential\s+stealer\b", r"\bbrowser\s+passwords\b",
+                r"\blogin\s+data\b", r"\bvaultcli\.dll\b"
             ]
         },
-        # DISCOVERY
         {
             "technique_id": "T1082",
             "technique_name": "System Information Discovery",
             "tactic": "Discovery",
             "tactic_id": "TA0007",
             "patterns": [
-                r'\bsysteminfo\.exe\b', r'\buname\s+-a\b', r'\bwhoami\b',
-                r'\bnet\s+view\b', r'\bhostname\b'
+                r"\bsysteminfo\.exe\b", r"\buname\s+-a\b", r"\bwhoami\b",
+                r"\bnet\s+view\b", r"\bhostname\b"
             ]
         },
         {
@@ -154,19 +145,18 @@ class CategorizationEngine:
             "tactic": "Discovery",
             "tactic_id": "TA0007",
             "patterns": [
-                r'\bnet\s+user\b', r'\bnet\s+group\s+"domain admins"\b',
-                r'\bget-aduser\b', r'\bdsquery\s+user\b'
+                r"\bnet\s+user\b", r"\bnet\s+group\s+.*domain admins.*\b",
+                r"\bget-aduser\b", r"\bdsquery\s+user\b"
             ]
         },
-        # LATERAL MOVEMENT
         {
             "technique_id": "T1021.002",
             "technique_name": "SMB/Windows Admin Shares",
             "tactic": "Lateral Movement",
             "tactic_id": "TA0008",
             "patterns": [
-                r'\bpsexec\b', r'\bc\$\b', r'\badmin\$\b', r'\bipc\$\b',
-                r'\bsmb\s+traffic\b', r'\bport\s+445\b'
+                r"\bpsexec\b", r"\bc\$\b", r"\badmin\$\b", r"\bipc\$\b",
+                r"\bsmb\s+traffic\b", r"\bport\s+445\b"
             ]
         },
         {
@@ -175,18 +165,17 @@ class CategorizationEngine:
             "tactic": "Lateral Movement",
             "tactic_id": "TA0008",
             "patterns": [
-                r'\brdp\b', r'\bremote\s+desktop\b', r'\bmstsc\.exe\b', r'\bport\s+3389\b'
+                r"\brdp\b", r"\bremote\s+desktop\b", r"\bmstsc\.exe\b", r"\bport\s+3389\b"
             ]
         },
-        # COMMAND AND CONTROL
         {
             "technique_id": "T1071.001",
             "technique_name": "Web Protocols (HTTP/S)",
             "tactic": "Command and Control",
             "tactic_id": "TA0011",
             "patterns": [
-                r'\bc2\s+beaconing\b', r'\bc2\s+over\s+https?\b',
-                r'\bpost\s+request\s+to\s+c2\b', r'\buser-agent\s+header\b'
+                r"\bc2\s+beaconing\b", r"\bc2\s+over\s+https?\b",
+                r"\bpost\s+request\s+to\s+c2\b", r"\buser-agent\s+header\b"
             ]
         },
         {
@@ -195,31 +184,29 @@ class CategorizationEngine:
             "tactic": "Command and Control",
             "tactic_id": "TA0011",
             "patterns": [
-                r'\btls\s+tunnel\b', r'\bcustom\s+encryption\b',
-                r'\brsa\s+handshake\b', r'\baes-256\s+encrypted\s+c2\b'
+                r"\btls\s+tunnel\b", r"\bcustom\s+encryption\b",
+                r"\brsa\s+handshake\b", r"\baes-256\s+encrypted\s+c2\b"
             ]
         },
-        # EXFILTRATION
         {
             "technique_id": "T1567",
             "technique_name": "Exfiltration Over Web Service",
             "tactic": "Exfiltration",
             "tactic_id": "TA0010",
             "patterns": [
-                r'\bexfiltrat(ed|ion)\b', r'\bmeganz\b', r'\brclone\b',
-                r'\bdropbox\s+api\b', r'\bdiscord\s+webhook\b', r'\btelegram\s+bot\b'
+                r"\bexfiltrat(ed|ion)\b", r"\bmeganz\b", r"\brclone\b",
+                r"\bdropbox\s+api\b", r"\bdiscord\s+webhook\b", r"\btelegram\s+bot\b"
             ]
         },
-        # IMPACT
         {
             "technique_id": "T1486",
             "technique_name": "Data Encrypted for Impact",
             "tactic": "Impact",
             "tactic_id": "TA0040",
             "patterns": [
-                r'\bransomware\b', r'\bencrypt(ed|ion)\b', r'\bransom\s+note\b',
-                r'\bvssadmin\s+delete\s+shadows\b', r'\bwbadmin\s+delete\s+catalog\b',
-                r'\bvolume\s+shadow\b'
+                r"\bransomware\b", r"\bencrypt(ed|ion)?\b", r"\bransom\s+note\b",
+                r"\bvssadmin\s+delete\s+shadows\b", r"\bwbadmin\s+delete\s+catalog\b",
+                r"\bvolume\s+shadow\b"
             ]
         },
         {
@@ -228,14 +215,13 @@ class CategorizationEngine:
             "tactic": "Impact",
             "tactic_id": "TA0040",
             "patterns": [
-                r'\bdelete\s+shadows\b', r'\bbcdedit\s+/set\b',
-                r'\brecoveryenabled\s+no\b', r'\bignoreallfailures\b'
+                r"\bdelete\s+shadows\b", r"\bbcdedit\s+/set\b",
+                r"\brecoveryenabled\s+no\b", r"\bignoreallfailures\b"
             ]
         }
     ]
 
     def __init__(self) -> None:
-        # Precompile behavioral patterns
         self.compiled_rules = []
         for rule in self.BEHAVIOR_RULES:
             compiled_patterns = [re.compile(p, re.IGNORECASE) for p in rule["patterns"]]
@@ -248,9 +234,6 @@ class CategorizationEngine:
             })
 
     def analyze_behaviors_and_ttps(self, text: str) -> Dict[str, Any]:
-        """
-        Scans text for behavioral TTP indicators and maps them to MITRE techniques.
-        """
         matched_techniques = {}
         matched_tactics = set()
         ttp_descriptions = []
@@ -287,26 +270,18 @@ class CategorizationEngine:
         techniques: List[Dict[str, Any]],
         text: str
     ) -> str:
-        """
-        Classifies intelligence item into an operational threat category.
-        Categories: RANSOMWARE, APT_ESPIONAGE, VULNERABILITY_EXPLOIT, COMMODITY_MALWARE, OSINT_ADVISORY
-        """
         tech_ids = {t["technique_id"] for t in techniques}
         text_lower = text.lower()
 
-        # Check Ransomware
         if "T1486" in tech_ids or "T1490" in tech_ids or "ransomware" in text_lower:
             return "RANSOMWARE"
 
-        # Check APT / Cyber Espionage
         if any(act.startswith("APT") or "Group" in act or "Bear" in act or "Chollima" in act for act in actors):
             return "APT_ESPIONAGE"
 
-        # Check Vulnerability Exploitation
         if len(cves) > 0 and ("T1190" in tech_ids or "exploit" in text_lower or "zero-day" in text_lower):
             return "VULNERABILITY_EXPLOIT"
 
-        # Check Commodity / Stealers / Loaders
         if len(malware) > 0:
             return "COMMODITY_MALWARE"
 
